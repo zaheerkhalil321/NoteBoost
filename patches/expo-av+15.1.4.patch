@@ -1,0 +1,32 @@
+diff --git a/node_modules/expo-av/build/ExponentAV.js b/node_modules/expo-av/build/ExponentAV.js
+index abc123..def456 100644
+--- a/node_modules/expo-av/build/ExponentAV.js
++++ b/node_modules/expo-av/build/ExponentAV.js
+@@ -1,3 +1,26 @@
+ import { requireNativeModule } from 'expo-modules-core';
+-export default requireNativeModule('ExponentAV');
++
++let cachedModule = null;
++
++try {
++  cachedModule = requireNativeModule('ExponentAV');
++} catch (error) {
++  console.warn('[expo-av] Failed to load ExponentAV module:', error);
++  // Provide a mock module that works with LegacyEventEmitter
++  cachedModule = {
++    addListener: () => {},
++    removeListeners: () => {},
++    setAudioMode: async () => {},
++    getPermissionsAsync: async () => ({ status: 'undetermined' }),
++    requestPermissionsAsync: async () => ({ status: 'undetermined' }),
++    prepareAudioRecorder: async () => ({ uri: null, status: {} }),
++    startAudioRecording: async () => ({}),
++    pauseAudioRecording: async () => ({}),
++    stopAudioRecording: async () => ({}),
++    getAudioRecordingStatus: async () => ({}),
++    unloadAudioRecorder: async () => {},
++  };
++}
++
++export default cachedModule;
+ //# sourceMappingURL=ExponentAV.js.map

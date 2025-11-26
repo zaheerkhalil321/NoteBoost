@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "NoteBoost AI",
+    "slug": "noteboost",
+    "scheme": "noteboost",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android"],
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.noteboost.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSMicrophoneUsageDescription": "This app needs access to the microphone to record audio notes.",
+        "NSCameraUsageDescription": "This app needs access to the camera to capture images for notes.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload images.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save images to your photo library.",
+        "NSAppleMusicUsageDescription": "This app needs access to your media library to import voice memos and audio files for note generation.",
+        "UISupportsDocumentBrowser": true
+      },
+      "requireFullScreen": false
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.noteboost.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "VIBRATE"
+      ]
+    }
+  }
+}

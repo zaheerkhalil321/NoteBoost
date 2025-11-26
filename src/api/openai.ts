@@ -1,0 +1,29 @@
+/*
+IMPORTANT NOTICE: DO NOT REMOVE
+This is a custom client for the OpenAI API. You may update this service, but you should not need to.
+
+valid model names:
+gpt-4.1-2025-04-14
+o4-mini-2025-04-16
+gpt-4o-2024-11-20
+*/
+import OpenAI from "openai";
+
+export const getOpenAIClient = () => {
+  const apiKey = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn("OpenAI API key not found in environment variables");
+  }
+  console.log('[OpenAI] Creating client with dangerouslyAllowBrowser...');
+  try {
+    const client = new OpenAI({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: true,
+    });
+    console.log('[OpenAI] Client created successfully');
+    return client;
+  } catch (error) {
+    console.log('[OpenAI] Failed to create client:', error);
+    throw error;
+  }
+};

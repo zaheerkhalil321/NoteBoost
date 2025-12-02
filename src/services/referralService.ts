@@ -9,6 +9,9 @@ import {
   logCreditsUsed,
   logCreditBalanceChange,
 } from './firebaseAnalytics';
+import { getCurrentUserId, initializeAnonymousAuth } from './firebase/auth';
+import { queueSync } from './optimizedSync';
+import { getUserByReferralCode } from './firebase/firestore';
 
 const USER_ID_KEY = 'user_id';
 
@@ -21,16 +24,38 @@ export const generateReferralCode = (): string => {
   return numbers + letters;
 };
 
-// Get or create user ID
+/**
+ * Get user ID from Firebase Auth
+ * This ensures SQLite and Firebase use the SAME user ID
+ * CRITICAL: This is the single source of truth for user identity
+ */
 const getUserId = async (): Promise<string> => {
-  let userId = await SecureStore.getItemAsync(USER_ID_KEY);
-
-  if (!userId) {
-    userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  try {
+    // Try to get Firebase user ID first
+    let userId = getCurrentUserId();
+    
+    // Cache it in SecureStore for offline access
     await SecureStore.setItemAsync(USER_ID_KEY, userId);
+    
+    console.log('[ReferralService] Using Firebase Auth user ID:', userId);
+    return userId;
+  } catch (error) {
+    // If Firebase Auth fails, try cached ID
+    console.warn('[ReferralService] Firebase Auth not available, checking cache');
+    const cachedUserId = await SecureStore.getItemAsync(USER_ID_KEY);
+    
+    if (cachedUserId) {
+      console.log('[ReferralService] Using cached user ID:', cachedUserId);
+      return cachedUserId;
+    }
+    
+    // If no cached ID, initialize Firebase Auth now
+    console.log('[ReferralService] No cached ID, initializing Firebase Auth');
+    const user = await initializeAnonymousAuth();
+    await SecureStore.setItemAsync(USER_ID_KEY, user.uid);
+    console.log('[ReferralService] Created new Firebase user:', user.uid);
+    return user.uid;
   }
-
-  return userId;
 };
 
 // Create or get user with referral code
@@ -40,21 +65,28 @@ export const createOrGetUser = async (): Promise<{
   credits: number;
 }> => {
   const db = getDatabase();
-  const userId = await getUserId();
+  const userId = await getUserId(); // This now uses Firebase Auth UID
 
-  // Check if user exists
+  // Check if user exists in SQLite
   const existingUser = await db.getFirstAsync<any>(
     'SELECT * FROM users WHERE id = ?',
     [userId]
   );
 
   if (existingUser) {
+    console.log('[ReferralService] User exists in SQLite:', userId);
+    
+    // Queue sync in background (debounced, batched)
+    queueSync('user');
+    
     return {
       id: existingUser.id,
       referralCode: existingUser.referral_code,
       credits: existingUser.credits || 0,
     };
   }
+
+  console.log('[ReferralService] Creating new user in SQLite:', userId);
 
   // Create new user with unique referral code
   let referralCode = generateReferralCode();
@@ -72,13 +104,23 @@ export const createOrGetUser = async (): Promise<{
     attempts++;
   }
 
+  const createdAt = Date.now();
+
+  // Insert into SQLite
   await db.runAsync(
     'INSERT INTO users (id, referral_code, credits, created_at) VALUES (?, ?, ?, ?)',
-    [userId, referralCode, 0, Date.now()]
+    [userId, referralCode, 0, createdAt]
   );
 
-  // Track referral code generation in Firebase
+  console.log('[ReferralService] User created in SQLite with code:', referralCode);
+
+  // Track referral code generation in Firebase Analytics
   await logReferralCodeGenerated(userId, referralCode);
+
+  // Queue sync to Firestore (optimized, batched)
+  queueSync('user');
+
+  console.log('[ReferralService] User synced to Firestore:', userId);
 
   return {
     id: userId,
@@ -100,6 +142,11 @@ export const redeemReferralCode = async (
       'SELECT used_referral_code, credits FROM users WHERE id = ?',
       [refereeId]
     );
+    const wholeUserData= await db.getFirstAsync<any>(
+      'SELECT * FROM users WHERE id = ?',
+      [refereeId]
+    );
+    console.log('referee data:', referee, wholeUserData, referralCode);
 
     if (referee?.used_referral_code) {
       await logReferralRedemptionAttempt(refereeId, referralCode, false, 'already_used_code');
@@ -113,10 +160,30 @@ export const redeemReferralCode = async (
     }
 
     // SAFEGUARD 3: Find the referrer by code
-    const referrer: any = await db.getFirstAsync(
+    // First, try local SQLite database
+    let referrer: any = await db.getFirstAsync(
       'SELECT id, referral_code FROM users WHERE referral_code = ?',
       [referralCode]
     );
+
+    // If not found locally, try Firestore (cross-device referral)
+    if (!referrer) {
+      console.log('[ReferralService] Code not found locally, checking Firestore...');
+      const firestoreUser = await getUserByReferralCode(referralCode);
+      
+      if (firestoreUser) {
+        console.log('[ReferralService] Found referrer in Firestore:', firestoreUser.id);
+        
+        // Insert the referrer into local SQLite so we can track the referral
+        await db.runAsync(
+          'INSERT OR IGNORE INTO users (id, referral_code, credits, created_at) VALUES (?, ?, ?, ?)',
+          [firestoreUser.id, firestoreUser.data.referral_code, firestoreUser.data.credits || 0, firestoreUser.data.created_at || Date.now()]
+        );
+        
+        referrer = { id: firestoreUser.id, referral_code: firestoreUser.data.referral_code };
+        console.log('[ReferralService] Referrer added to local DB:', referrer);
+      }
+    }
 
     if (!referrer) {
       await logReferralRedemptionAttempt(refereeId, referralCode, false, 'code_not_found');
@@ -240,6 +307,10 @@ export const redeemReferralCode = async (
       await db.execAsync('COMMIT');
 
       console.log(`[Referral] User ${refereeId} redeemed code ${referralCode} and received 1 credit!`);
+      
+      // Queue sync for both users (optimized, batched)
+      queueSync('referral');
+      
       return { success: true, creditAwarded: 1 };
     } catch (transactionError: any) {
       // Rollback on any error
@@ -371,6 +442,9 @@ export const useCredits = async (
     // Track credit usage in Firebase
     await logCreditsUsed(userId, amount, remainingCredits, usedFor);
     await logCreditBalanceChange(userId, oldBalance, remainingCredits, `used_for_${usedFor}`);
+
+    // Queue sync (optimized, batched)
+    queueSync('user');
 
     return { success: true, remainingCredits };
   } catch (error: any) {

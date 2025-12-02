@@ -8,8 +8,10 @@ import { useOnboardingStore } from "./src/state/onboardingStore";
 import { useEffect, useState, useRef } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { initDatabase } from "./src/services/database";
+import { initializeFirebase } from "./src/services/firebase/config";
 import { initFirebaseUser, setUserReferralProperties } from "./src/services/firebaseAnalytics";
 import { createOrGetUser, getReferralStats } from "./src/services/referralService";
+import { initializeOptimizedSync } from "./src/services/optimizedSync";
 import HomeScreen from "./src/screens/HomeScreen";
 import NoteEditorScreen from "./src/screens/NoteEditorScreen";
 import FeynmanScreen from "./src/screens/FeynmanScreen";
@@ -83,6 +85,7 @@ export default function App() {
   const checkForUpdates = useAppUpdateStore((state) => state.checkForUpdates);
   const navigationRef = useRef<any>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
+  const autoSyncCleanup = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     // Initialize database and wait for store hydration
@@ -91,10 +94,14 @@ export default function App() {
         await initDatabase();
         console.log('[App] Database initialized');
 
-        // Initialize Firebase Analytics
+        // Initialize Firebase (App, Auth, Firestore, Analytics)
         try {
-          await initFirebaseUser();
+          await initializeFirebase();
           console.log('[App] Firebase initialized');
+
+          // Initialize Firebase user with anonymous auth
+          await initFirebaseUser();
+          console.log('[App] Firebase user authenticated');
 
           // Set user referral properties for analytics
           const user = await createOrGetUser();
@@ -130,6 +137,17 @@ export default function App() {
           console.error('[App] Firebase initialization failed:', firebaseError);
           // Don't block app if Firebase fails
         }
+
+        // Initialize optimized sync service (batched, debounced)
+        try {
+          console.log('[App] Initializing optimized sync service...');
+          const cleanup = initializeOptimizedSync();
+          autoSyncCleanup.current = cleanup;
+          console.log('[App] Optimized sync service initialized');
+        } catch (syncError) {
+          console.error('[App] Auto-sync initialization failed:', syncError);
+          // Don't block app if sync fails
+        }
       } catch (error) {
         console.error('[App] Database initialization failed:', error);
       }
@@ -161,6 +179,16 @@ export default function App() {
     };
 
     initialize();
+  }, []);
+
+  // Cleanup auto-sync on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSyncCleanup.current) {
+        console.log('[App] Cleaning up auto-sync');
+        autoSyncCleanup.current();
+      }
+    };
   }, []);
 
   useEffect(() => {

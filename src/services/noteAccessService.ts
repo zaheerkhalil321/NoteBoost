@@ -1,6 +1,7 @@
 import revenueCatService from './revenueCat';
 import { getUserCredits, useCredits as spendCredits, createOrGetUser } from './referralService';
 import * as SecureStore from 'expo-secure-store';
+import { getCurrentUserId, initializeAnonymousAuth } from './firebase/auth';
 
 const USER_ID_KEY = 'user_id';
 
@@ -24,19 +25,23 @@ export interface NoteAccessStatus {
   reason?: string;
 }
 
-// Get user ID from secure storage, create user if doesn't exist
+/**
+ * Get user ID from Firebase Auth (single source of truth)
+ * Falls back to createOrGetUser if needed
+ */
 const getUserId = async (): Promise<string | null> => {
   try {
-    let userId = await SecureStore.getItemAsync(USER_ID_KEY);
-
-    // If no user ID found, create a new user
-    if (!userId) {
-      console.log('[NoteAccess] No user found, creating new user...');
+    // Try to get Firebase Auth user ID
+    try {
+      const userId = getCurrentUserId();
+      console.log('[NoteAccess] Using Firebase Auth user ID:', userId);
+      return userId;
+    } catch (error) {
+      // Firebase not initialized yet, create/get user which will initialize it
+      console.log('[NoteAccess] Firebase not ready, creating/getting user...');
       const user = await createOrGetUser();
-      userId = user.id;
+      return user.id;
     }
-
-    return userId;
   } catch (error) {
     console.error('[NoteAccess] Error getting user ID:', error);
     return null;

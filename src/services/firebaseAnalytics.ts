@@ -1,28 +1,76 @@
-// Stub implementation for analytics (Firebase removed due to native module requirements)
-// All analytics events are logged to console for debugging
+import { logEvent, setUserId, setUserProperties } from 'firebase/analytics';
+import { getFirebaseAnalytics, getFirebaseAuth } from './firebase/config';
+import { initializeAnonymousAuth, getCurrentUserId } from './firebase/auth';
 
-// Helper to simulate analytics logging
+// Helper to log analytics events with Firebase
 const logAnalyticsEvent = (eventName: string, params: Record<string, any>) => {
-  console.log(`[Analytics] ${eventName}:`, params);
+  try {
+    const analytics = getFirebaseAnalytics();
+    if (analytics) {
+      logEvent(analytics, eventName, params);
+      console.log(`[Analytics] ${eventName}:`, params);
+    } else {
+      console.log(`[Analytics] (No Analytics) ${eventName}:`, params);
+    }
+  } catch (error) {
+    console.error(`[Analytics] Error logging ${eventName}:`, error);
+  }
 };
 
 const logScreenView = (params: { screen_name: string; screen_class: string }) => {
-  console.log(`[Analytics] Screen View:`, params);
+  try {
+    const analytics = getFirebaseAnalytics();
+    if (analytics) {
+      logEvent(analytics, 'screen_view' as any, params);
+      console.log(`[Analytics] Screen View:`, params);
+    }
+  } catch (error) {
+    console.error('[Analytics] Error logging screen view:', error);
+  }
 };
 
 const setUserProperty = (property: string, value: string) => {
-  console.log(`[Analytics] User Property: ${property} = ${value}`);
+  try {
+    const analytics = getFirebaseAnalytics();
+    if (analytics) {
+      setUserProperties(analytics, { [property]: value });
+      console.log(`[Analytics] User Property: ${property} = ${value}`);
+    }
+  } catch (error) {
+    console.error('[Analytics] Error setting user property:', error);
+  }
 };
 
-// Initialize anonymous authentication for user tracking
+// Track if Firebase user has been initialized
+let firebaseUserInitialized = false;
+
+// Initialize Firebase authentication and analytics
 export const initFirebaseUser = async () => {
+  // Guard: Only initialize once
+  if (firebaseUserInitialized) {
+    const auth = getFirebaseAuth();
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      console.log('[Analytics] ✅ Already initialized, using existing user:', currentUser.uid);
+      return currentUser.uid;
+    }
+  }
+
   try {
-    // Generate a simple anonymous user ID
-    const anonymousId = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    console.log('[Analytics] Anonymous user initialized:', anonymousId);
-    return anonymousId;
+    const user = await initializeAnonymousAuth();
+    firebaseUserInitialized = true;
+    
+    // Set user ID for analytics
+    const analytics = getFirebaseAnalytics();
+    if (analytics) {
+      setUserId(analytics, user.uid);
+      console.log('[Analytics] User ID set:', user.uid);
+    }
+    
+    return user.uid;
   } catch (error) {
     console.error('[Analytics] Auth error:', error);
+    throw error;
   }
 };
 

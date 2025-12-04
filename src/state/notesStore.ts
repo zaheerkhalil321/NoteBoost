@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { trackReferredUserNote } from '../services/referralTracker';
+import { syncNoteToSupabase, deleteNoteFromSupabase } from '../services/supabase/database';
+import { createOrGetUser } from '../services/referralService';
 
 export interface QuizItem {
   question: string;
@@ -157,7 +159,6 @@ export const useNotesStore = create<NotesState & NotesActions>()(
         // Track note creation for referred users
         (async () => {
           try {
-            const { createOrGetUser } = await import('../services/referralService');
             const user = await createOrGetUser();
             const totalNotes = get().notes.length;
             const noteSource = note.sourceType || 'text';
@@ -168,6 +169,30 @@ export const useNotesStore = create<NotesState & NotesActions>()(
               totalNotes,
               isFirstNote
             );
+
+            // Sync note to Supabase (fire-and-forget)
+            try {
+              const mappedSource = (note.sourceType === 'screenshot' ? 'image' : note.sourceType) as
+                | 'text'
+                | 'audio'
+                | 'youtube'
+                | 'document'
+                | 'image';
+
+              const noteData = {
+                id: noteId,
+                user_id: user.id,
+                title: note.title,
+                content: note.content,
+                source: mappedSource,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+              };
+
+              await syncNoteToSupabase(noteData as any);
+            } catch (syncError) {
+              console.error('[NotesStore] Error syncing added note to Supabase:', syncError);
+            }
           } catch (error) {
             console.error('[NotesStore] Error tracking referred user note:', error);
           }
@@ -177,16 +202,62 @@ export const useNotesStore = create<NotesState & NotesActions>()(
       },
 
       updateNote: (id, updates) =>
-        set((state) => ({
-          notes: state.notes.map((note) =>
+        set((state) => {
+          const updatedNotes = state.notes.map((note) =>
             note.id === id ? { ...note, ...updates, updatedAt: Date.now() } : note
-          ),
-        })),
+          );
+
+          // Fire-and-forget sync for updated note
+          (async () => {
+            try {
+              const updatedNote = updatedNotes.find((n) => n.id === id);
+              if (updatedNote) {
+                const user = await createOrGetUser();
+
+                const mappedSource = (updatedNote.sourceType === 'screenshot' ? 'image' : updatedNote.sourceType) as
+                  | 'text'
+                  | 'audio'
+                  | 'youtube'
+                  | 'document'
+                  | 'image';
+
+                await syncNoteToSupabase({
+                  id: updatedNote.id,
+                  user_id: user.id,
+                  title: updatedNote.title,
+                  content: updatedNote.content,
+                  source: mappedSource,
+                  created_at: updatedNote.createdAt,
+                  updated_at: updatedNote.updatedAt,
+                } as any);
+              }
+            } catch (error) {
+              console.error('[NotesStore] Error syncing updated note to Supabase:', error);
+            }
+          })();
+
+          return {
+            notes: updatedNotes,
+          };
+        }),
 
       deleteNote: (id) =>
-        set((state) => ({
-          notes: state.notes.filter((note) => note.id !== id),
-        })),
+        set((state) => {
+          const remainingNotes = state.notes.filter((note) => note.id !== id);
+
+          // Fire-and-forget deletion from Supabase
+          (async () => {
+            try {
+              await deleteNoteFromSupabase(id);
+            } catch (error) {
+              console.error('[NotesStore] Error deleting note from Supabase:', error);
+            }
+          })();
+
+          return {
+            notes: remainingNotes,
+          };
+        }),
 
       addFolder: (name) =>
         set((state) => ({

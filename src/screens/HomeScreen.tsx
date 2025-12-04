@@ -21,8 +21,8 @@ import { useOnboardingStore } from "../state/onboardingStore";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
-import { EncodingType } from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
+import { EncodingType } from "expo-file-system";
 import { captureRef } from "react-native-view-shot";
 import * as Haptics from "expo-haptics";
 

@@ -3,15 +3,17 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import * as ExpoSplashScreen from "expo-splash-screen";
 import { RootStackParamList } from "./src/navigation/types";
 import { useOnboardingStore } from "./src/state/onboardingStore";
 import { useEffect, useState, useRef } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { initDatabase } from "./src/services/database";
-import { initializeFirebase } from "./src/services/firebase/config";
+import { initializeSupabase } from "./src/services/supabase/config";
 import { initFirebaseUser, setUserReferralProperties } from "./src/services/firebaseAnalytics";
 import { createOrGetUser, getReferralStats } from "./src/services/referralService";
 import { initializeOptimizedSync } from "./src/services/optimizedSync";
+import { initializeAnalytics, logScreenView, type ScreenName } from "./src/services/localAnalytics";
 import HomeScreen from "./src/screens/HomeScreen";
 import NoteEditorScreen from "./src/screens/NoteEditorScreen";
 import FeynmanScreen from "./src/screens/FeynmanScreen";
@@ -94,14 +96,14 @@ export default function App() {
         await initDatabase();
         console.log('[App] Database initialized');
 
-        // Initialize Firebase (App, Auth, Firestore, Analytics)
+        // Initialize Supabase (Auth, Database)
         try {
-          await initializeFirebase();
-          console.log('[App] Firebase initialized');
+          await initializeSupabase();
+          console.log('[App] Supabase initialized');
 
-          // Initialize Firebase user with anonymous auth
+          // Initialize Supabase user with anonymous auth
           await initFirebaseUser();
-          console.log('[App] Firebase user authenticated');
+          console.log('[App] Supabase user authenticated');
 
           // Set user referral properties for analytics
           const user = await createOrGetUser();
@@ -132,10 +134,10 @@ export default function App() {
             })()) : undefined
           );
 
-          console.log('[App] User properties set in Firebase');
-        } catch (firebaseError) {
-          console.error('[App] Firebase initialization failed:', firebaseError);
-          // Don't block app if Firebase fails
+          console.log('[App] User properties set');
+        } catch (supabaseError) {
+          console.error('[App] Supabase initialization failed:', supabaseError);
+          // Don't block app if Supabase fails
         }
 
         // Initialize optimized sync service (batched, debounced)
@@ -157,6 +159,14 @@ export default function App() {
         console.error('[App] RevenueCat initialization failed:', error);
       });
 
+      // Initialize local analytics
+      try {
+        await initializeAnalytics();
+        console.log('[App] Analytics initialized');
+      } catch (analyticsError) {
+        console.error('[App] Analytics initialization failed:', analyticsError);
+      }
+
       // Set a timeout to ensure app loads even if RevenueCat hangs
       const timeoutPromise = new Promise<void>((resolve) => {
         setTimeout(() => {
@@ -172,6 +182,11 @@ export default function App() {
       setTimeout(() => {
         setIsReady(true);
         console.log('[App] App is ready');
+
+        // Hide splash screen when app is ready
+        ExpoSplashScreen.hideAsync().catch((e) => {
+          console.warn('[App] Error hiding splash screen:', e);
+        });
 
         // Check for app updates after initialization
         checkForUpdates();
@@ -239,7 +254,27 @@ export default function App() {
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
-        <NavigationContainer ref={navigationRef}>
+        <NavigationContainer
+          ref={navigationRef}
+          onReady={() => {
+            console.log('[Navigation] Navigation ready');
+          }}
+          onStateChange={async (state) => {
+            // Get current screen name from navigation state
+            const route = state?.routes[state.index];
+            if (route) {
+              const screenName = (route.name as ScreenName) || route.name;
+              console.log('[Navigation] Screen changed to:', screenName);
+              
+              // Log screen view to analytics
+              logScreenView(screenName as ScreenName, {
+                previous_screen: navigationRef.current?.getCurrentRoute?.()?.name,
+              }).catch((error) => {
+                console.error('[Analytics] Error logging screen view:', error);
+              });
+            }
+          }}
+        >
           <Stack.Navigator
             initialRouteName={hasCompletedOnboarding ? "Home" : "Welcome"}
             screenOptions={{

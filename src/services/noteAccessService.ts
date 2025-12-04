@@ -1,7 +1,7 @@
 import revenueCatService from './revenueCat';
 import { getUserCredits, useCredits as spendCredits, createOrGetUser } from './referralService';
 import * as SecureStore from 'expo-secure-store';
-import { getCurrentUserId, initializeAnonymousAuth } from './firebase/auth';
+import { getCurrentUserId, initializeAnonymousAuth } from './supabase/auth';
 
 const USER_ID_KEY = 'user_id';
 

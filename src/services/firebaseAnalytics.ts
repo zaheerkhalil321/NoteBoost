@@ -1,73 +1,65 @@
-import { logEvent, setUserId, setUserProperties } from 'firebase/analytics';
-import { getFirebaseAnalytics, getFirebaseAuth } from './firebase/config';
-import { initializeAnonymousAuth, getCurrentUserId } from './firebase/auth';
+import analytics from '@react-native-firebase/analytics';
+import { initializeAnonymousAuth, getCurrentUserId } from './supabase/auth';
 
-// Helper to log analytics events with Firebase
-const logAnalyticsEvent = (eventName: string, params: Record<string, any>) => {
+// Firebase Analytics helper functions
+const logAnalyticsEvent = async (eventName: string, params: Record<string, any>) => {
   try {
-    const analytics = getFirebaseAnalytics();
-    if (analytics) {
-      logEvent(analytics, eventName, params);
-      console.log(`[Analytics] ${eventName}:`, params);
-    } else {
-      console.log(`[Analytics] (No Analytics) ${eventName}:`, params);
-    }
+    await analytics().logEvent(eventName, params);
   } catch (error) {
-    console.error(`[Analytics] Error logging ${eventName}:`, error);
+    console.error(`[Firebase Analytics] Error logging ${eventName}:`, error);
   }
 };
 
-const logScreenView = (params: { screen_name: string; screen_class: string }) => {
+const logScreenView = async (params: { screen_name: string; screen_class: string }) => {
   try {
-    const analytics = getFirebaseAnalytics();
-    if (analytics) {
-      logEvent(analytics, 'screen_view' as any, params);
-      console.log(`[Analytics] Screen View:`, params);
-    }
+    await analytics().logScreenView(params);
   } catch (error) {
-    console.error('[Analytics] Error logging screen view:', error);
+    console.error('[Firebase Analytics] Error logging screen view:', error);
   }
 };
 
-const setUserProperty = (property: string, value: string) => {
+const setUserProperty = async (property: string, value: string) => {
   try {
-    const analytics = getFirebaseAnalytics();
-    if (analytics) {
-      setUserProperties(analytics, { [property]: value });
-      console.log(`[Analytics] User Property: ${property} = ${value}`);
-    }
+    await analytics().setUserProperty(property, value);
   } catch (error) {
-    console.error('[Analytics] Error setting user property:', error);
+    console.error('[Firebase Analytics] Error setting user property:', error);
   }
 };
 
-// Track if Firebase user has been initialized
+const setUserId = async (userId: string) => {
+  try {
+    await analytics().setUserId(userId);
+  } catch (error) {
+    console.error('[Firebase Analytics] Error setting user ID:', error);
+  }
+};
+
+// Track if user has been initialized
 let firebaseUserInitialized = false;
 
-// Initialize Firebase authentication and analytics
+// Initialize authentication and analytics
 export const initFirebaseUser = async () => {
   // Guard: Only initialize once
   if (firebaseUserInitialized) {
-    const auth = getFirebaseAuth();
-    const currentUser = auth.currentUser;
-    if (currentUser) {
-      console.log('[Analytics] ✅ Already initialized, using existing user:', currentUser.uid);
-      return currentUser.uid;
+    try {
+      const currentUserId = getCurrentUserId();
+      console.log('[Analytics] ✅ Already initialized, using existing user:', currentUserId);
+      await setUserId(currentUserId);
+      return currentUserId;
+    } catch (error) {
+      // Continue to create new user
     }
   }
 
   try {
     const user = await initializeAnonymousAuth();
     firebaseUserInitialized = true;
-    
-    // Set user ID for analytics
-    const analytics = getFirebaseAnalytics();
-    if (analytics) {
-      setUserId(analytics, user.uid);
-      console.log('[Analytics] User ID set:', user.uid);
-    }
-    
-    return user.uid;
+
+    // Set user ID in Firebase Analytics
+    await setUserId(user.id);
+    console.log('[Analytics] User ID set in Firebase Analytics:', user.id);
+
+    return user.id;
   } catch (error) {
     console.error('[Analytics] Auth error:', error);
     throw error;
@@ -80,21 +72,20 @@ export const initFirebaseUser = async () => {
 
 // Track referral code generation (when new user joins)
 export const logReferralCodeGenerated = async (userId: string, referralCode: string) => {
-  logAnalyticsEvent('referral_code_generated', {
+  await logAnalyticsEvent('referral_code_generated', {
     user_id: userId,
     referral_code: referralCode,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] Referral code generated:', referralCode);
 };
 
 // Track when user views referral screen
 export const logReferralScreenView = async () => {
-  logScreenView({
+  await logScreenView({
     screen_name: 'ReferralScreen',
     screen_class: 'ReferralScreen',
   });
-  logAnalyticsEvent('referral_screen_viewed', {
+  await logAnalyticsEvent('referral_screen_viewed', {
     timestamp: Date.now(),
   });
 };
@@ -105,13 +96,12 @@ export const logReferralCodeShared = async (
   referralCode: string,
   shareMethod: 'copy' | 'share_api' | 'social'
 ) => {
-  logAnalyticsEvent('referral_code_shared', {
+  await logAnalyticsEvent('referral_code_shared', {
     user_id: userId,
     referral_code: referralCode,
     share_method: shareMethod,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] Referral code shared via:', shareMethod);
 };
 
 // Track referral code redemption attempt (REAL-TIME)
@@ -121,14 +111,13 @@ export const logReferralRedemptionAttempt = async (
   success: boolean,
   errorReason?: string
 ) => {
-  logAnalyticsEvent('referral_redemption_attempt', {
+  await logAnalyticsEvent('referral_redemption_attempt', {
     referee_id: refereeId,
     referral_code: referralCode,
     success,
     error_reason: errorReason || 'none',
     timestamp: Date.now(),
   });
-  console.log('[Analytics] Redemption attempt:', success ? 'SUCCESS' : `FAILED - ${errorReason}`);
 };
 
 // Track successful referral redemption (REAL-TIME: both referrer and referee notified)
@@ -138,14 +127,13 @@ export const logReferralRedeemed = async (
   referralCode: string,
   welcomeCredit: number
 ) => {
-  logAnalyticsEvent('referral_redeemed', {
+  await logAnalyticsEvent('referral_redeemed', {
     referee_id: refereeId,
     referrer_id: referrerId,
     referral_code: referralCode,
     welcome_credit: welcomeCredit,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] 🎉 Referral redeemed! Code:', referralCode);
 };
 
 // Track when referrer earns credits (3 referrals completed) - REAL-TIME
@@ -156,7 +144,7 @@ export const logReferralCycleCompleted = async (
   creditsAwarded: number,
   totalReferrals: number
 ) => {
-  logAnalyticsEvent('referral_cycle_completed', {
+  await logAnalyticsEvent('referral_cycle_completed', {
     referrer_id: referrerId,
     referral_code: referralCode,
     cycle_number: cycleNumber,
@@ -164,7 +152,6 @@ export const logReferralCycleCompleted = async (
     total_referrals: totalReferrals,
     timestamp: Date.now(),
   });
-  console.log(`[Analytics] 💰 Cycle ${cycleNumber} completed! ${creditsAwarded} credits awarded`);
 };
 
 // Track max cycles reached
@@ -174,14 +161,13 @@ export const logReferralMaxCyclesReached = async (
   totalCycles: number,
   totalReferrals: number
 ) => {
-  logAnalyticsEvent('referral_max_cycles_reached', {
+  await logAnalyticsEvent('referral_max_cycles_reached', {
     referrer_id: referrerId,
     referral_code: referralCode,
     total_cycles: totalCycles,
     total_referrals: totalReferrals,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] Max cycles reached for user:', referrerId);
 };
 
 // ============================================
@@ -195,14 +181,13 @@ export const logCreditsUsed = async (
   remainingCredits: number,
   usedFor: string
 ) => {
-  logAnalyticsEvent('credits_used', {
+  await logAnalyticsEvent('credits_used', {
     user_id: userId,
     credits_used: creditsUsed,
     remaining_credits: remainingCredits,
     used_for: usedFor,
     timestamp: Date.now(),
   });
-  console.log(`[Analytics] Credits used: ${creditsUsed} for ${usedFor}`);
 };
 
 // Track credit balance changes
@@ -212,7 +197,7 @@ export const logCreditBalanceChange = async (
   newBalance: number,
   changeReason: string
 ) => {
-  logAnalyticsEvent('credit_balance_changed', {
+  await logAnalyticsEvent('credit_balance_changed', {
     user_id: userId,
     old_balance: oldBalance,
     new_balance: newBalance,
@@ -232,13 +217,12 @@ export const logReferredUserFirstNote = async (
   referrerCode: string,
   hoursAfterReferral: number
 ) => {
-  logAnalyticsEvent('referred_user_first_note', {
+  await logAnalyticsEvent('referred_user_first_note', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     hours_after_referral: hoursAfterReferral,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] 📝 Referred user created first note!');
 };
 
 // Track referred user note creation activity
@@ -249,7 +233,7 @@ export const logReferredUserNoteCreated = async (
   totalNotes: number,
   noteSource: 'text' | 'audio' | 'youtube' | 'document' | 'image'
 ) => {
-  logAnalyticsEvent('referred_user_note_created', {
+  await logAnalyticsEvent('referred_user_note_created', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -267,7 +251,7 @@ export const logReferredUserQuizTaken = async (
   quizScore: number,
   totalQuizzes: number
 ) => {
-  logAnalyticsEvent('referred_user_quiz_taken', {
+  await logAnalyticsEvent('referred_user_quiz_taken', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -285,7 +269,7 @@ export const logReferredUserFlashcardSession = async (
   cardsStudied: number,
   totalSessions: number
 ) => {
-  logAnalyticsEvent('referred_user_flashcard_session', {
+  await logAnalyticsEvent('referred_user_flashcard_session', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -302,7 +286,7 @@ export const logReferredUserPodcastGenerated = async (
   daysAfterReferral: number,
   totalPodcasts: number
 ) => {
-  logAnalyticsEvent('referred_user_podcast_generated', {
+  await logAnalyticsEvent('referred_user_podcast_generated', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -318,7 +302,7 @@ export const logReferredUserFeynmanUsed = async (
   daysAfterReferral: number,
   totalFeynmanSessions: number
 ) => {
-  logAnalyticsEvent('referred_user_feynman_used', {
+  await logAnalyticsEvent('referred_user_feynman_used', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -335,7 +319,7 @@ export const logReferredUserChatUsed = async (
   messageCount: number,
   roastMode: boolean
 ) => {
-  logAnalyticsEvent('referred_user_chat_used', {
+  await logAnalyticsEvent('referred_user_chat_used', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -352,7 +336,7 @@ export const logReferredUserLearningPathUsed = async (
   daysAfterReferral: number,
   totalLearningPaths: number
 ) => {
-  logAnalyticsEvent('referred_user_learning_path_used', {
+  await logAnalyticsEvent('referred_user_learning_path_used', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -368,7 +352,7 @@ export const logReferredUserVisualsGenerated = async (
   daysAfterReferral: number,
   totalVisuals: number
 ) => {
-  logAnalyticsEvent('referred_user_visuals_generated', {
+  await logAnalyticsEvent('referred_user_visuals_generated', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -384,7 +368,7 @@ export const logReferredUserDailyActive = async (
   daysAfterReferral: number,
   totalActiveDays: number
 ) => {
-  logAnalyticsEvent('referred_user_daily_active', {
+  await logAnalyticsEvent('referred_user_daily_active', {
     referee_id: refereeId,
     referrer_code: referrerCode,
     days_after_referral: daysAfterReferral,
@@ -399,13 +383,12 @@ export const logReferredUserBecameReferrer = async (
   originalReferrerCode: string,
   daysAfterReferral: number
 ) => {
-  logAnalyticsEvent('referred_user_became_referrer', {
+  await logAnalyticsEvent('referred_user_became_referrer', {
     referee_id: refereeId,
     original_referrer_code: originalReferrerCode,
     days_after_referral: daysAfterReferral,
     timestamp: Date.now(),
   });
-  console.log('[Analytics] 🌟 Referred user became a referrer!');
 };
 
 // ============================================
@@ -422,13 +405,13 @@ export const setUserReferralProperties = async (
   isReferredUser: boolean,
   referrerCode?: string
 ) => {
-  setUserProperty('has_referred_users', hasReferredUsers.toString());
-  setUserProperty('total_referrals', totalReferrals.toString());
-  setUserProperty('total_credits', totalCredits.toString());
-  setUserProperty('completed_cycles', completedCycles.toString());
-  setUserProperty('is_referred_user', isReferredUser.toString());
+  await setUserProperty('has_referred_users', hasReferredUsers.toString());
+  await setUserProperty('total_referrals', totalReferrals.toString());
+  await setUserProperty('total_credits', totalCredits.toString());
+  await setUserProperty('completed_cycles', completedCycles.toString());
+  await setUserProperty('is_referred_user', isReferredUser.toString());
   if (referrerCode) {
-    setUserProperty('referred_by_code', referrerCode);
+    await setUserProperty('referred_by_code', referrerCode);
   }
 };
 

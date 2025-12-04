@@ -1,5 +1,5 @@
-import * as FileSystem from "expo-file-system/legacy";
-import { EncodingType } from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
+import { EncodingType } from "expo-file-system";
 
 /**
  * Generate speech audio from text using OpenAI's text-to-speech API

@@ -11,14 +11,13 @@
 
 import { getDatabase } from './database';
 import {
-  syncUserToFirestore,
-  syncNotesToFirestore,
-  syncAllDataToFirestore,
+  syncUserToSupabase,
+  syncNotesToSupabase,
   isOnline,
   UserData,
   NoteData,
-} from './firebase/firestore';
-import { getCurrentUserId } from './firebase/auth';
+} from './supabase/database';
+import { getCurrentUserId } from './supabase/auth';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { AppState, AppStateStatus } from 'react-native';
 
@@ -27,7 +26,7 @@ let lastSyncTime = 0;
 const MIN_SYNC_INTERVAL = 30000; // 30 seconds minimum between syncs
 
 /**
- * Sync all user data from SQLite to Firestore
+ * Sync all user data from SQLite to Supabase
  * This is the main sync function
  */
 export const syncAllUserData = async (): Promise<void> => {
@@ -57,7 +56,7 @@ export const syncAllUserData = async (): Promise<void> => {
   try {
     console.log('[AutoSync] Starting full sync...');
     
-    // Get Firebase user ID
+    // Get Supabase user ID
     const userId = getCurrentUserId();
     console.log('[AutoSync] Syncing data for user:', userId);
 
@@ -77,7 +76,7 @@ export const syncAllUserData = async (): Promise<void> => {
         used_referral_code: user.used_referral_code || null,
       };
 
-      await syncUserToFirestore(userId, userData);
+      await syncUserToSupabase(userId, userData);
       console.log('[AutoSync] User data synced');
     }
 
@@ -192,7 +191,7 @@ export const syncUserDataOnly = async (): Promise<void> => {
         used_referral_code: user.used_referral_code || null,
       };
 
-      await syncUserToFirestore(userId, userData);
+      await syncUserToSupabase(userId, userData);
       console.log('[AutoSync] User data synced (lightweight)');
     }
   } catch (error) {

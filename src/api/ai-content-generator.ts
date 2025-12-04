@@ -66,6 +66,7 @@ const truncateText = (text: string, maxChars: number = 100000): string => {
  * Build personalization context from user's onboarding answers
  */
 const buildPersonalizationContext = (userProfile: OnboardingAnswers | null): string => {
+  console.log("🚀 ~ buildPersonalizationContext ~ userProfile:", userProfile)
   if (!userProfile) return '';
 
   const context: string[] = [];
@@ -91,7 +92,7 @@ const buildPersonalizationContext = (userProfile: OnboardingAnswers | null): str
 
   // Add obstacles they face
   if (userProfile.obstacles && userProfile.obstacles.length > 0) {
-    context.push(`Obstacles they face: ${userProfile.obstacles.join(', ')}`);
+    context.push(`Obstacles they face: ${Array.isArray(userProfile.obstacles) ? userProfile.obstacles.join(', ') : userProfile.obstacles}`);
   }
 
   if (context.length === 0) return '';

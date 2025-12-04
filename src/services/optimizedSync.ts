@@ -10,11 +10,11 @@
 
 import { getDatabase } from './database';
 import {
-  syncUserToFirestore,
+  syncUserToSupabase,
   isOnline,
   UserData,
-} from './firebase/firestore';
-import { getCurrentUserId } from './firebase/auth';
+} from './supabase/database';
+import { getCurrentUserId } from './supabase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
 
@@ -112,9 +112,9 @@ const syncNow = async (): Promise<void> => {
         used_referral_code: user.used_referral_code || null,
       };
 
-      // Send to Firestore (ONE call for all changes)
-      await syncUserToFirestore(userId, userData);
-      console.log('[Sync] ✅ Successfully synced to Firestore');
+      // Send to Supabase (ONE call for all changes)
+      await syncUserToSupabase(userId, userData);
+      console.log('[Sync] ✅ Successfully synced to Supabase');
     }
   } catch (error) {
     console.error('[Sync] ❌ Error:', error);

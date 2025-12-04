@@ -13,6 +13,7 @@ const ContentSourceBottomSheet = forwardRef<BottomSheetMethods, ContentSourceBot
     const snapPoints = useMemo(() => ["50%"], []);
 
     console.log("[ContentSourceBottomSheet] Component mounted with ref:", ref);
+    
 
     const sources = [
       {

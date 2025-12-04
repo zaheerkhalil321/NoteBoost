@@ -9,9 +9,9 @@ import {
   logCreditsUsed,
   logCreditBalanceChange,
 } from './firebaseAnalytics';
-import { getCurrentUserId, initializeAnonymousAuth } from './firebase/auth';
+import { getCurrentUserId, initializeAnonymousAuth } from './supabase/auth';
 import { queueSync } from './optimizedSync';
-import { getUserByReferralCode } from './firebase/firestore';
+import { getUserByReferralCode } from './supabase/database';
 
 const USER_ID_KEY = 'user_id';
 
@@ -25,23 +25,23 @@ export const generateReferralCode = (): string => {
 };
 
 /**
- * Get user ID from Firebase Auth
- * This ensures SQLite and Firebase use the SAME user ID
+ * Get user ID from Supabase Auth
+ * This ensures SQLite and Supabase use the SAME user ID
  * CRITICAL: This is the single source of truth for user identity
  */
 const getUserId = async (): Promise<string> => {
   try {
-    // Try to get Firebase user ID first
+    // Try to get Supabase user ID first
     let userId = getCurrentUserId();
     
     // Cache it in SecureStore for offline access
     await SecureStore.setItemAsync(USER_ID_KEY, userId);
     
-    console.log('[ReferralService] Using Firebase Auth user ID:', userId);
+    console.log('[ReferralService] Using Supabase Auth user ID:', userId);
     return userId;
   } catch (error) {
-    // If Firebase Auth fails, try cached ID
-    console.warn('[ReferralService] Firebase Auth not available, checking cache');
+    // If Supabase Auth fails, try cached ID
+    console.warn('[ReferralService] Supabase Auth not available, checking cache');
     const cachedUserId = await SecureStore.getItemAsync(USER_ID_KEY);
     
     if (cachedUserId) {
@@ -49,12 +49,12 @@ const getUserId = async (): Promise<string> => {
       return cachedUserId;
     }
     
-    // If no cached ID, initialize Firebase Auth now
-    console.log('[ReferralService] No cached ID, initializing Firebase Auth');
+    // If no cached ID, initialize Supabase Auth now
+    console.log('[ReferralService] No cached ID, initializing Supabase Auth');
     const user = await initializeAnonymousAuth();
-    await SecureStore.setItemAsync(USER_ID_KEY, user.uid);
-    console.log('[ReferralService] Created new Firebase user:', user.uid);
-    return user.uid;
+    await SecureStore.setItemAsync(USER_ID_KEY, user.id);
+    console.log('[ReferralService] Created new Supabase user:', user.id);
+    return user.id;
   }
 };
 
@@ -65,7 +65,7 @@ export const createOrGetUser = async (): Promise<{
   credits: number;
 }> => {
   const db = getDatabase();
-  const userId = await getUserId(); // This now uses Firebase Auth UID
+  const userId = await getUserId(); // This now uses Supabase Auth UID
 
   // Check if user exists in SQLite
   const existingUser = await db.getFirstAsync<any>(
@@ -114,7 +114,7 @@ export const createOrGetUser = async (): Promise<{
 
   console.log('[ReferralService] User created in SQLite with code:', referralCode);
 
-  // Track referral code generation in Firebase Analytics
+  // Track referral code generation in analytics
   await logReferralCodeGenerated(userId, referralCode);
 
   // Queue sync to Firestore (optimized, batched)
@@ -235,7 +235,7 @@ export const redeemReferralCode = async (
         [referralCode, refereeId, refereeData.referral_code, Date.now(), 'completed']
       );
 
-      // Track successful redemption in Firebase
+      // Track successful redemption in analytics
       await logReferralRedemptionAttempt(refereeId, referralCode, true);
       await logReferralRedeemed(refereeId, referrer.id, referralCode, 1);
 
@@ -276,7 +276,7 @@ export const redeemReferralCode = async (
           ['rewarded', referralCode, 'completed']
         );
 
-        // Track cycle completion in Firebase
+        // Track cycle completion in analytics
         await logReferralCycleCompleted(
           referrer.id,
           referralCode,
@@ -293,7 +293,7 @@ export const redeemReferralCode = async (
           ['max_reached', referralCode, 'completed']
         );
 
-        // Track max cycles reached in Firebase
+        // Track max cycles reached in analytics
         await logReferralMaxCyclesReached(
           referrer.id,
           referralCode,
@@ -439,7 +439,7 @@ export const useCredits = async (
 
     const remainingCredits = oldBalance - amount;
 
-    // Track credit usage in Firebase
+    // Track credit usage in analytics
     await logCreditsUsed(userId, amount, remainingCredits, usedFor);
     await logCreditBalanceChange(userId, oldBalance, remainingCredits, `used_for_${usedFor}`);
 

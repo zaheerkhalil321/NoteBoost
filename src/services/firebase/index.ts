@@ -5,8 +5,7 @@ export {
   initializeFirebase, 
   getFirebaseApp, 
   getFirebaseAuth, 
-  getFirebaseFirestore, 
-  getFirebaseAnalytics,
+  getFirebaseFirestore,
   firebaseConfig 
 } from './config';
 

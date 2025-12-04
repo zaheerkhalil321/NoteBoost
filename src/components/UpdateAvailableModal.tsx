@@ -9,7 +9,6 @@ import {
   StyleSheet,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import * as Updates from 'expo-updates';
 import * as Application from 'expo-application';
 import { useAppUpdateStore } from '../state/appUpdateStore';
 
@@ -18,27 +17,8 @@ export const UpdateAvailableModal: React.FC = () => {
 
   const handleUpdate = async () => {
     try {
-      if (__DEV__ || !Updates.isEnabled) {
-        // In development or Expo Go, open the app store page
-        const bundleId = Application.applicationId || 'com.vibecode.app';
-        const appStoreUrl = Platform.select({
-          ios: `https://apps.apple.com/app/id${bundleId}`,
-          android: `https://play.google.com/store/apps/details?id=${bundleId}`,
-        });
-
-        if (appStoreUrl) {
-          await Linking.openURL(appStoreUrl);
-        }
-      } else {
-        // In production with OTA updates enabled
-        console.log('[UpdateModal] Fetching and reloading update...');
-        await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
-      }
-    } catch (error) {
-      console.error('[UpdateModal] Error updating app:', error);
-      // Fallback to app store if OTA update fails
-      const bundleId = Application.applicationId || 'com.vibecode.app';
+      // Open the app store page
+      const bundleId = Application.applicationId || 'com.noteboost.app';
       const appStoreUrl = Platform.select({
         ios: `https://apps.apple.com/app/id${bundleId}`,
         android: `https://play.google.com/store/apps/details?id=${bundleId}`,
@@ -47,6 +27,8 @@ export const UpdateAvailableModal: React.FC = () => {
       if (appStoreUrl) {
         await Linking.openURL(appStoreUrl);
       }
+    } catch (error) {
+      console.error('[UpdateModal] Error opening app store:', error);
     }
   };
 

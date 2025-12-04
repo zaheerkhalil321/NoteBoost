@@ -2,7 +2,7 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import { 
   initializeAuth,
   Auth,
-  //@ts-ignore
+//@ts-ignore
   getReactNativePersistence
 } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,7 +10,7 @@ import {
   getFirestore, 
   Firestore
 } from 'firebase/firestore';
-import { getAnalytics, Analytics, isSupported } from 'firebase/analytics';
+// Note: Analytics is handled by @react-native-firebase/analytics, not web SDK
 
 // Firebase configuration
 const firebaseConfig = {
@@ -27,14 +27,12 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let firestore: Firestore;
-let analytics: Analytics | null = null;
 
-// Initialize Firebase
+// Initialize Firebase (without analytics - handled by @react-native-firebase/analytics)
 export const initializeFirebase = async (): Promise<{
   app: FirebaseApp;
   auth: Auth;
   firestore: Firestore;
-  analytics: Analytics | null;
 }> => {
   try {
     // Initialize Firebase app
@@ -52,23 +50,15 @@ export const initializeFirebase = async (): Promise<{
     firestore = getFirestore(app);
     console.log('[Firebase] ✅ Firestore initialized');
 
-    // Initialize Analytics (only if supported in environment)
-    const analyticsSupported = await isSupported();
-    if (analyticsSupported) {
-      analytics = getAnalytics(app);
-      console.log('[Firebase] ✅ Analytics initialized');
-    } else {
-      console.log('[Firebase] ℹ️ Analytics not supported (React Native)');
-    }
+    // Note: Analytics initialization is handled automatically by @react-native-firebase/analytics
+    // No need to initialize it here as it would conflict with the native SDK
 
-    return { app, auth, firestore, analytics };
+    return { app, auth, firestore };
   } catch (error) {
     console.error('[Firebase] ❌ Initialization error:', error);
     throw error;
   }
-};
-
-// Getters for Firebase instances
+};// Getters for Firebase instances
 export const getFirebaseApp = (): FirebaseApp => {
   if (!app) {
     throw new Error('Firebase app not initialized. Call initializeFirebase() first.');
@@ -90,9 +80,8 @@ export const getFirebaseFirestore = (): Firestore => {
   return firestore;
 };
 
-export const getFirebaseAnalytics = (): Analytics | null => {
-  return analytics;
-};
+// Note: Analytics is handled by @react-native-firebase/analytics
+// Use analytics() from that package instead of getFirebaseAnalytics()
 
 // Export config for reference
 export { firebaseConfig };

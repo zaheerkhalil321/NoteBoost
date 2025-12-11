@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import mockSubscriptionService from './mockSubscription';
 
 // Lazy import types
 type CustomerInfo = any;
@@ -11,7 +10,6 @@ class RevenueCatService {
   private initialized = false;
   private Purchases: any = null;
   private LOG_LEVEL: any = null;
-  private useMockService = false; // Flag to use mock service when RevenueCat unavailable
 
   private constructor() {}
 
@@ -51,10 +49,7 @@ class RevenueCatService {
       });
 
       if (!apiKey) {
-        console.warn('[RevenueCat] API key not found. Using mock subscription service for testing.');
-        this.useMockService = true;
-        this.initialized = true;
-        return;
+        throw new Error('RevenueCat API key not found. Please set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY or EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY environment variables.');
       }
 
       // Lazy load Purchases module
@@ -78,9 +73,8 @@ class RevenueCatService {
         console.warn('[RevenueCat] Could not fetch initial customer info:', infoError);
       }
     } catch (error) {
-      console.error('[RevenueCat] Initialization failed, falling back to mock service:', error);
-      this.useMockService = true;
-      this.initialized = true;
+      console.error('[RevenueCat] Initialization failed:', error);
+      throw error;
     }
   }
 
@@ -165,13 +159,6 @@ class RevenueCatService {
   }
 
   async isUserSubscribed(): Promise<boolean> {
-    // Use mock service if RevenueCat not available
-    if (this.useMockService) {
-      const isSubscribed = await mockSubscriptionService.checkSubscriptionStatus();
-      console.log('[RevenueCat] Using mock service - subscription status:', isSubscribed);
-      return isSubscribed;
-    }
-
     if (!this.Purchases) {
       console.warn('[RevenueCat] Not initialized');
       return false;

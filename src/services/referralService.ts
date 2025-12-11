@@ -142,11 +142,6 @@ export const redeemReferralCode = async (
       'SELECT used_referral_code, credits FROM users WHERE id = ?',
       [refereeId]
     );
-    const wholeUserData= await db.getFirstAsync<any>(
-      'SELECT * FROM users WHERE id = ?',
-      [refereeId]
-    );
-    console.log('referee data:', referee, wholeUserData, referralCode);
 
     if (referee?.used_referral_code) {
       await logReferralRedemptionAttempt(refereeId, referralCode, false, 'already_used_code');
@@ -166,21 +161,21 @@ export const redeemReferralCode = async (
       [referralCode]
     );
 
-    // If not found locally, try Firestore (cross-device referral)
+    // If not found locally, try Supabase (cross-device referral)
     if (!referrer) {
-      console.log('[ReferralService] Code not found locally, checking Firestore...');
-      const firestoreUser = await getUserByReferralCode(referralCode);
-      
-      if (firestoreUser) {
-        console.log('[ReferralService] Found referrer in Firestore:', firestoreUser.id);
-        
+      console.log('[ReferralService] Code not found locally, checking Supabase...');
+      const supabaseUser = await getUserByReferralCode(referralCode);
+
+      if (supabaseUser) {
+        console.log('[ReferralService] Found referrer in Supabase:', supabaseUser.id);
+
         // Insert the referrer into local SQLite so we can track the referral
         await db.runAsync(
           'INSERT OR IGNORE INTO users (id, referral_code, credits, created_at) VALUES (?, ?, ?, ?)',
-          [firestoreUser.id, firestoreUser.data.referral_code, firestoreUser.data.credits || 0, firestoreUser.data.created_at || Date.now()]
+          [supabaseUser.id, supabaseUser.data.referral_code, supabaseUser.data.credits || 0, supabaseUser.data.created_at || Date.now()]
         );
-        
-        referrer = { id: firestoreUser.id, referral_code: firestoreUser.data.referral_code };
+
+        referrer = { id: supabaseUser.id, referral_code: supabaseUser.data.referral_code };
         console.log('[ReferralService] Referrer added to local DB:', referrer);
       }
     }

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import mockSubscriptionService, { SubscriptionPlan } from '../services/mockSubscription';
+import revenueCatService from '../services/revenueCat';
+
+type SubscriptionPlan = "yearly" | "monthly" | "weekly" | "lifetime";
 
 interface SubscriptionState {
   isSubscribed: boolean;
@@ -41,15 +43,18 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       checkSubscriptionStatus: async () => {
         try {
-          const isSubscribed = await mockSubscriptionService.checkSubscriptionStatus();
-          const activePlan = mockSubscriptionService.getActivePlan();
-
+          const isSubscribed = await revenueCatService.isUserSubscribed();
+          // Note: RevenueCat doesn't provide the specific plan type directly,
+          // so we rely on the stored activePlan from when the subscription was purchased
+          const currentState = get();
+          
           set({
             isSubscribed,
-            activePlan,
+            // Keep the existing activePlan if user is still subscribed
+            activePlan: isSubscribed ? currentState.activePlan : null,
           });
 
-          console.log('[SubscriptionStore] Subscription status:', { isSubscribed, activePlan });
+          console.log('[SubscriptionStore] Subscription status:', { isSubscribed, activePlan: isSubscribed ? currentState.activePlan : null });
         } catch (error) {
           console.error('[SubscriptionStore] Failed to check subscription status:', error);
         }

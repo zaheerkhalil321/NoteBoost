@@ -17,7 +17,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../navigation/types";
 import * as Haptics from "expo-haptics";
 import revenueCatService from "../services/revenueCat";
-import mockSubscriptionService, { MockPackage } from "../services/mockSubscription";
 import { useSubscriptionStore } from "../state/subscriptionStore";
 import { getUserCredits } from "../services/referralService";
 import * as SecureStore from 'expo-secure-store';
@@ -34,19 +33,20 @@ type PaywallScreenProps = {
 interface Feature {
   icon: string;
   title: string;
+  description: string;
 }
 
 const features: Feature[] = [
-  { icon: "sparkles", title: "AI-Powered Summaries" },
-  { icon: "mic", title: "Audio Transcription" },
-  { icon: "school", title: "Smart Quizzes" },
-  { icon: "chatbubbles", title: "AI Chat Assistant" },
-  { icon: "document-text", title: "Multi-Format Support" },
-  { icon: "flash", title: "Instant Flashcards" },
-  { icon: "images", title: "Visual Content Analysis" },
-  { icon: "headset", title: "Podcast Transcription" },
-  { icon: "globe", title: "Multi-Language Support" },
-  { icon: "shield-checkmark", title: "Priority Support" },
+  { icon: "sparkles", title: "AI-Powered Summaries", description: "Get instant, intelligent summaries of your notes and lectures with advanced AI technology" },
+  { icon: "mic", title: "Audio Transcription", description: "Convert voice recordings and lectures into accurate, searchable text automatically" },
+  { icon: "school", title: "Smart Quizzes", description: "Generate personalized quizzes from your notes to test and reinforce your knowledge" },
+  { icon: "chatbubbles", title: "AI Chat Assistant", description: "Ask questions about your notes and get instant, contextual answers from AI" },
+  { icon: "document-text", title: "Multi-Format Support", description: "Import and work with PDFs, images, audio files, and more - all in one place" },
+  { icon: "flash", title: "Instant Flashcards", description: "Automatically create flashcards from your notes for efficient spaced repetition learning" },
+  { icon: "images", title: "Visual Content Analysis", description: "Extract and understand text from images, charts, and handwritten notes" },
+  { icon: "headset", title: "Podcast Transcription", description: "Transcribe podcasts and audio content into searchable, organized notes" },
+  { icon: "globe", title: "Multi-Language Support", description: "Work with content in multiple languages with automatic translation and transcription" },
+  { icon: "shield-checkmark", title: "Priority Support", description: "Get fast, personalized help from our expert support team whenever you need it" },
 ];
 
 interface Testimonial {
@@ -167,9 +167,13 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
     try {
       setLoading(true);
 
-      // Use mock subscription service in Vibecode environment
-      console.log('[Paywall] Loading mock subscription offerings');
-      const offering = await mockSubscriptionService.getOfferings();
+      // Initialize RevenueCat if not already done
+      await revenueCatService.initialize();
+
+      // Load subscription offerings
+      console.log('[Paywall] Loading RevenueCat subscription offerings');
+      const offering = await revenueCatService.getOfferings();
+      console.log("🚀 ~ loadOfferings ~ offering:", offering)
 
       if (offering && offering.availablePackages) {
         setPackages(offering.availablePackages);
@@ -277,10 +281,10 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
 
       console.log('[Paywall] Purchasing package:', selectedPackage.identifier);
 
-      // Use mock subscription service
-      const success = await mockSubscriptionService.purchasePackage(selectedPackage);
+      // Use RevenueCat service
+      const customerInfo = await revenueCatService.purchasePackage(selectedPackage);
 
-      if (success) {
+      if (customerInfo) {
         // Save subscription to store
         setSubscription(selectedPlan);
 
@@ -310,10 +314,10 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
     try {
       console.log('[Paywall] Restoring purchases...');
 
-      // Use mock subscription service
-      const hasSubscription = await mockSubscriptionService.restorePurchases();
+      // Use RevenueCat service
+      const customerInfo = await revenueCatService.restorePurchases();
 
-      if (hasSubscription) {
+      if (customerInfo && Object.keys(customerInfo.activeSubscriptions).length > 0) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         alert('Purchases restored successfully!');
         navigation.reset({
@@ -433,14 +437,12 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                 Join thousands of users achieving their goals
               </Text>
 
-              {/* Social Proof Stats */}
-              <View style={{
+              {/* <View style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 32,
               }}>
-                {/* Star Rating */}
                 <View style={{
                   flexDirection: "row",
                   alignItems: "center",
@@ -454,21 +456,19 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </Text>
                 </View>
 
-                {/* Divider */}
                 <View style={{ width: 1, height: 20, backgroundColor: "#CBD5E1", marginHorizontal: 16 }} />
 
-                {/* Users Count */}
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Ionicons name="people" size={18} color="#60A5FA" style={{ marginRight: 6 }} />
                   <Text style={{ color: "#1e293b", fontSize: 15, fontWeight: "600" }}>
                     100K+ Users
                   </Text>
                 </View>
-              </View>
+              </View> */}
             </View>
 
             {/* Testimonials Carousel - Moved Higher for Better Conversion */}
-            <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
+            {/* <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
               <View style={{
                 backgroundColor: "rgba(255, 255, 255, 0.8)",
                 borderRadius: 20,
@@ -504,7 +504,6 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                 {testimonials[currentTestimonial].author}, {testimonials[currentTestimonial].role}
               </Text>
 
-              {/* Testimonial Indicators */}
               <View style={{
                 flexDirection: "row",
                 justifyContent: "center",
@@ -524,10 +523,9 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                 ))}
               </View>
             </View>
-            </View>
+            </View> */}
 
-            {/* As Featured In */}
-            <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
+            {/* <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
               <Text style={{
                 color: "#94A3B8",
                 fontSize: 11,
@@ -546,7 +544,6 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                 flexWrap: "wrap",
                 gap: 24,
               }}>
-                {/* Product Hunt Badge */}
                 <View style={{ alignItems: "center", opacity: 0.6 }}>
                   <Ionicons name="rocket" size={28} color="#94A3B8" />
                   <Text style={{
@@ -566,7 +563,6 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </Text>
                 </View>
 
-                {/* Editor's Choice Badge */}
                 <View style={{ alignItems: "center", opacity: 0.6 }}>
                   <Ionicons name="ribbon" size={28} color="#94A3B8" />
                   <Text style={{
@@ -586,7 +582,6 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </Text>
                 </View>
 
-                {/* TechCrunch Badge */}
                 <View style={{ alignItems: "center", opacity: 0.6 }}>
                   <Ionicons name="newspaper" size={28} color="#94A3B8" />
                   <Text style={{
@@ -606,7 +601,6 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </Text>
                 </View>
 
-                {/* Forbes Badge */}
                 <View style={{ alignItems: "center", opacity: 0.6 }}>
                   <Ionicons name="briefcase" size={28} color="#94A3B8" />
                   <Text style={{
@@ -626,10 +620,9 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </Text>
                 </View>
               </View>
-            </View>
+            </View> */}
 
-            {/* Success Stats Banner */}
-            <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
+            {/* <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
               <View style={{
                 backgroundColor: "rgba(96, 165, 250, 0.15)",
                 borderRadius: 16,
@@ -676,7 +669,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                   </View>
                 </View>
               </View>
-            </View>
+            </View> */}
 
             {/* Features Grid */}
             <View style={{
@@ -730,8 +723,16 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                       fontSize: 14,
                       fontWeight: "600",
                       lineHeight: 18,
+                      marginBottom: 8,
                     }}>
                       {feature.title}
+                    </Text>
+                    <Text style={{
+                      color: "#64748b",
+                      fontSize: 12,
+                      lineHeight: 16,
+                    }}>
+                      {feature.description}
                     </Text>
                   </View>
                 ))}

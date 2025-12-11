@@ -7,8 +7,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * IMPORTANT: Replace these with your actual Supabase credentials
  * Get them from: https://app.supabase.com/project/_/settings/api
  */
-const SUPABASE_URL = 'https://edoerritiotovegznxww.supabase.co'; // e.g., https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkb2Vycml0aW90b3ZlZ3pueHd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MTg1MTAsImV4cCI6MjA4MDE5NDUxMH0.QqudGtBFN1upZOqUEBgl_K9JK4qZphj1fEJLchSyE-s'; // Your anon/public key
 
 // Supabase client instance
 let supabase: SupabaseClient | null = null;
@@ -25,7 +23,7 @@ export const initializeSupabase = async (): Promise<SupabaseClient> => {
     }
 
     // Create Supabase client with AsyncStorage for auth persistence
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    supabase = createClient(process.env.EXPO_PUBLIC_SUPABASE_URL, process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY, {
       auth: {
         storage: AsyncStorage,
         autoRefreshToken: true,
@@ -54,6 +52,6 @@ export const getSupabaseClient = (): SupabaseClient => {
 
 // Export config for reference
 export const supabaseConfig = {
-  url: SUPABASE_URL,
-  anonKey: SUPABASE_ANON_KEY,
+  url: process.env.EXPO_PUBLIC_SUPABASE_URL,
+  anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
 };

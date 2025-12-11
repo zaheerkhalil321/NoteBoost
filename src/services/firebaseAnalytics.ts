@@ -35,15 +35,14 @@ const setUserId = async (userId: string) => {
 };
 
 // Track if user has been initialized
-let firebaseUserInitialized = false;
+let supabaseUserInitialized = false;
 
 // Initialize authentication and analytics
-export const initFirebaseUser = async () => {
+export const initSupabaseUser = async () => {
   // Guard: Only initialize once
-  if (firebaseUserInitialized) {
+  if (supabaseUserInitialized) {
     try {
       const currentUserId = getCurrentUserId();
-      console.log('[Analytics] ✅ Already initialized, using existing user:', currentUserId);
       await setUserId(currentUserId);
       return currentUserId;
     } catch (error) {
@@ -53,11 +52,10 @@ export const initFirebaseUser = async () => {
 
   try {
     const user = await initializeAnonymousAuth();
-    firebaseUserInitialized = true;
+    supabaseUserInitialized = true;
 
-    // Set user ID in Firebase Analytics
+    // Set user ID in Supabase
     await setUserId(user.id);
-    console.log('[Analytics] User ID set in Firebase Analytics:', user.id);
 
     return user.id;
   } catch (error) {

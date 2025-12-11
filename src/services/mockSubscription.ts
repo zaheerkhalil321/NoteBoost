@@ -47,8 +47,8 @@ class MockSubscriptionService {
           packageType: 'WEEKLY',
           product: {
             identifier: 'weekly_subscription',
-            priceString: '$4.99',
-            price: 4.99,
+            priceString: '$9.99',
+            price: 9.99,
             currencyCode: 'USD',
           },
         },
@@ -57,8 +57,8 @@ class MockSubscriptionService {
           packageType: 'ANNUAL',
           product: {
             identifier: 'yearly_subscription',
-            priceString: '$49.99',
-            price: 49.99,
+            priceString: '$99.99',
+            price: 99.99,
             currencyCode: 'USD',
           },
         },

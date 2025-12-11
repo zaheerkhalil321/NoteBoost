@@ -1,29 +1,27 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, Pressable, TextInput, Animated, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
-import { useReferralStore } from '../state/referralStore';
-import {
-  createOrGetUser,
-  redeemReferralCode,
-} from '../services/referralService';
-import { logReferralScreenView } from '../services/firebaseAnalytics';
-import { BlurView } from 'expo-blur';
-import { ProgressBar } from '../components/ProgressBar';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, Pressable, TextInput, Animated, Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../navigation/types";
+import * as Haptics from "expo-haptics";
+import { Ionicons } from "@expo/vector-icons";
+import { useReferralStore } from "../state/referralStore";
+import { createOrGetUser, redeemReferralCode } from "../services/referralService";
+import { logReferralScreenView } from "../services/firebaseAnalytics";
+import { BlurView } from "expo-blur";
+import { ProgressBar } from "../components/ProgressBar";
+import { getCurrentUser, getCurrentUserId } from "../services/supabase";
 
 type OnboardingReferralScreenProps = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'ReferralOnboarding'>;
+  navigation: NativeStackNavigationProp<RootStackParamList, "ReferralOnboarding">;
 };
 
 export default function OnboardingReferralScreen({ navigation }: OnboardingReferralScreenProps) {
   const insets = useSafeAreaInsets();
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState('');
+  const [userId, setUserId] = useState("");
   const { setRedeemedCode } = useReferralStore();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -34,13 +32,18 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
     // Initialize user
     const initUser = async () => {
       try {
-        const user = await createOrGetUser();
+        const user = await getCurrentUser();
+        if (!user) {
+          const user = await createOrGetUser();
+          setUserId(user.id);
+          return;
+        }
         setUserId(user.id);
 
         // Track screen view in Firebase
         await logReferralScreenView();
       } catch (error) {
-        console.error('[OnboardingReferral] Init error:', error);
+        console.error("[OnboardingReferral] Init error:", error);
       }
     };
 
@@ -79,7 +82,7 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
 
   const handleSkip = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate('PainPoint');
+    navigation.navigate("PainPoint");
   }, [navigation]);
 
   const handleBack = useCallback(() => {
@@ -98,7 +101,7 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
 
     // Validate format: 3 numbers + 3 letters
     if (!/^[0-9]{3}[A-Z]{3}$/.test(code)) {
-      Alert.alert('Invalid Format', 'Referral code must be 3 numbers followed by 3 letters (e.g., 123ABC)');
+      Alert.alert("Invalid Format", "Referral code must be 3 numbers followed by 3 letters (e.g., 123ABC)");
       return;
     }
 
@@ -112,17 +115,19 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
         setRedeemedCode(code);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert(
-          'Welcome Bonus!',
-          `You've received ${result.creditAwarded || 1} free credit! Your friend will also earn credits when they reach 3 referrals.`,
-          [{ text: 'Continue', onPress: () => navigation.navigate('PainPoint') }]
+          "Welcome Bonus!",
+          `You've received ${
+            result.creditAwarded || 1
+          } free credit! Your friend will also earn credits when they reach 3 referrals.`,
+          [{ text: "Continue", onPress: () => navigation.navigate("PainPoint") }]
         );
       } else {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        Alert.alert('Invalid Code', result.error || 'This referral code is not valid.');
+        Alert.alert("Invalid Code", result.error || "This referral code is not valid.");
       }
     } catch (error) {
-      console.error('[OnboardingReferral] Redeem error:', error);
-      Alert.alert('Error', 'Something went wrong. Please try again.');
+      console.error("[OnboardingReferral] Redeem error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -131,20 +136,20 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
   const handleInviteFriends = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Navigate to invite flow after completing onboarding
-    navigation.navigate('PainPoint');
+    navigation.navigate("PainPoint");
     // TODO: Show invite modal or navigate to invite screen after onboarding completes
   }, [navigation]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       {/* Light Gradient Background - matching app theme */}
       <LinearGradient
-        colors={['#D6EAF8', '#E8F4F8', '#F9F7E8', '#FFF9E6']}
+        colors={["#D6EAF8", "#E8F4F8", "#F9F7E8", "#FFF9E6"]}
         locations={[0, 0.4, 0.7, 1]}
         style={{
-          position: 'absolute',
-          width: '100%',
-          height: '100%',
+          position: "absolute",
+          width: "100%",
+          height: "100%",
         }}
       />
 
@@ -196,7 +201,7 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
         </View>
 
         {/* Skip Button */}
-        <View style={{ alignItems: 'flex-end', paddingHorizontal: 24, marginTop: 16, marginBottom: 40 }}>
+        <View style={{ alignItems: "flex-end", paddingHorizontal: 24, marginTop: 16, marginBottom: 40 }}>
           <Pressable
             onPress={handleSkip}
             style={({ pressed }) => ({
@@ -207,9 +212,9 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
           >
             <Text
               style={{
-                color: '#64748b',
+                color: "#64748b",
                 fontSize: 16,
-                fontWeight: '600',
+                fontWeight: "600",
               }}
             >
               Skip
@@ -218,20 +223,20 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
         </View>
 
         {/* Main Content */}
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}>
           {/* Icon - Gift with light blue glassmorphic design */}
           <View
             style={{
               width: 140,
               height: 140,
               borderRadius: 70,
-              backgroundColor: 'rgba(186, 230, 253, 0.5)',
-              alignItems: 'center',
-              justifyContent: 'center',
+              backgroundColor: "rgba(186, 230, 253, 0.5)",
+              alignItems: "center",
+              justifyContent: "center",
               marginBottom: 32,
               borderWidth: 2,
-              borderColor: 'rgba(125, 211, 252, 0.4)',
-              shadowColor: '#7DD3FC',
+              borderColor: "rgba(125, 211, 252, 0.4)",
+              shadowColor: "#7DD3FC",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.2,
               shadowRadius: 16,
@@ -245,26 +250,26 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
           <Text
             style={{
               fontSize: 32,
-              fontWeight: '800',
-              color: '#1e293b',
-              textAlign: 'center',
+              fontWeight: "800",
+              color: "#1e293b",
+              textAlign: "center",
               marginBottom: 16,
               letterSpacing: -0.5,
             }}
           >
-            Do you have a{'\n'}referral code?
+            Do you have a{"\n"}referral code?
           </Text>
 
           {/* Subtext */}
           <Text
             style={{
               fontSize: 17,
-              color: '#64748b',
-              textAlign: 'center',
+              color: "#64748b",
+              textAlign: "center",
               lineHeight: 26,
               marginBottom: 48,
               paddingHorizontal: 20,
-              fontWeight: '500',
+              fontWeight: "500",
             }}
           >
             Enter your friend's code to get bonus benefits
@@ -273,13 +278,13 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
           {/* Glassmorphic Input Card - Light theme */}
           <View
             style={{
-              width: '100%',
-              backgroundColor: 'rgba(255, 255, 255, 0.7)',
+              width: "100%",
+              backgroundColor: "rgba(255, 255, 255, 0.7)",
               borderRadius: 24,
               padding: 24,
               borderWidth: 2,
-              borderColor: 'rgba(255, 255, 255, 0.9)',
-              shadowColor: '#7DD3FC',
+              borderColor: "rgba(255, 255, 255, 0.9)",
+              shadowColor: "#7DD3FC",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.15,
               shadowRadius: 20,
@@ -289,9 +294,9 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
             <View>
               <Text
                 style={{
-                  color: '#64748b',
+                  color: "#64748b",
                   fontSize: 13,
-                  fontWeight: '600',
+                  fontWeight: "600",
                   marginBottom: 12,
                   letterSpacing: 1,
                 }}
@@ -307,16 +312,16 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
                 maxLength={6}
                 autoCapitalize="characters"
                 style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  backgroundColor: "rgba(255, 255, 255, 0.9)",
                   borderRadius: 16,
                   padding: 18,
                   marginBottom: 12,
                   borderWidth: 1,
-                  borderColor: 'rgba(125, 211, 252, 0.3)',
+                  borderColor: "rgba(125, 211, 252, 0.3)",
                   fontSize: 24,
-                  fontWeight: '700',
-                  color: '#38BDF8',
-                  textAlign: 'center',
+                  fontWeight: "700",
+                  color: "#38BDF8",
+                  textAlign: "center",
                   letterSpacing: 4,
                 }}
               />
@@ -331,10 +336,10 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
             onPress={handleContinue}
             disabled={isLoading}
             style={({ pressed }) => ({
-              overflow: 'hidden',
+              overflow: "hidden",
               borderRadius: 16,
               transform: [{ scale: pressed && !isLoading ? 0.97 : 1 }],
-              shadowColor: '#3B82F6',
+              shadowColor: "#3B82F6",
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.2,
               shadowRadius: 12,
@@ -342,24 +347,24 @@ export default function OnboardingReferralScreen({ navigation }: OnboardingRefer
             })}
           >
             <LinearGradient
-              colors={isLoading ? ['#94A3B8', '#64748B'] : ['#60A5FA', '#3B82F6']}
+              colors={isLoading ? ["#94A3B8", "#64748B"] : ["#60A5FA", "#3B82F6"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
                 paddingVertical: 18,
-                alignItems: 'center',
+                alignItems: "center",
                 borderRadius: 16,
               }}
             >
               <Text
                 style={{
-                  color: '#FFFFFF',
+                  color: "#FFFFFF",
                   fontSize: 18,
-                  fontWeight: '700',
+                  fontWeight: "700",
                   letterSpacing: -0.3,
                 }}
               >
-                {isLoading ? 'Validating...' : referralCode ? 'Apply Code' : 'Get Started'}
+                {isLoading ? "Validating..." : referralCode ? "Apply Code" : "Get Started"}
               </Text>
             </LinearGradient>
           </Pressable>

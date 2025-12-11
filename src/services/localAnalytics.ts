@@ -10,6 +10,7 @@
 
 import { getCurrentUserId } from './supabase/auth';
 import analytics from '@react-native-firebase/analytics';
+import { track as mixpanelTrack } from './mixpanel';
 
 // ============================================
 // ANALYTICS CONFIGURATION
@@ -62,6 +63,7 @@ interface ScreenProperties {
 
 // Track current screen
 let currentScreen: ScreenName | null = null;
+let lastScreenViewAt = 0;
 
 // ============================================
 // CORE LOGGING FUNCTIONS
@@ -99,6 +101,13 @@ export const logEvent = async (
 
     // Send to Firebase Analytics
     await analytics().logEvent(eventName, eventData);
+
+    // Also send to Mixpanel (best-effort)
+    try {
+      await mixpanelTrack(eventName, eventData);
+    } catch (e) {
+      // Best-effort; don't block main analytics
+    }
   } catch (error) {
     console.error(`[Analytics] Error logging event ${eventName}:`, error);
   }
@@ -119,7 +128,16 @@ export const logScreenView = async (screenName: ScreenName, properties?: Record<
       // User not initialized yet
     }
 
+    // Dedupe/throttle repeated screen view events for the same screen within 1 second
+    const now = Date.now();
+    if (currentScreen === screenName && now - lastScreenViewAt < 1000) {
+      if (config.logToConsole) {
+        console.log('[Analytics] Skipping duplicate screen view:', screenName);
+      }
+      return;
+    }
     currentScreen = screenName;
+    lastScreenViewAt = now;
 
     const screenData: ScreenProperties = {
       screen_name: screenName,
@@ -138,6 +156,13 @@ export const logScreenView = async (screenName: ScreenName, properties?: Record<
       screen_name: screenName,
       screen_class: screenName,
     });
+
+    // Send to Mixpanel as well (best-effort)
+    try {
+      await mixpanelTrack('screen_view', screenData);
+    } catch (e) {
+      // ignore errors
+    }
   } catch (error) {
     console.error(`[Analytics] Error logging screen view:`, error);
   }

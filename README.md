@@ -358,6 +358,36 @@
     - Credit usage patterns and behavior insights
     - Viral coefficient measurement (referred users who become referrers)
 
+### Mixpanel Integration (Optional)
+
+- Install Mixpanel React Native SDK: `bun add mixpanel-react-native` (already added in this repo)
+- Provide your Mixpanel token via an environment variable or `app.json` extra:
+  - process.env.EXPO_PUBLIC_MIXPANEL_TOKEN or process.env.MIXPANEL_TOKEN
+  - or add to `app.json` under `expo.extra.mixpanelToken`
+- Rebuild native apps after adding dependency to ensure native modules are linked:
+  - iOS: `cd ios && pod install` or run `expo prebuild` if you use Expo managed
+  - Android: Rebuild with `expo run:android` or `eas build`
+- Mixpanel initialization is handled by `src/services/mixpanel.ts`. Call `initMixpanel()` during app initialization to enable tracking.
+
+Example Usage:
+```ts
+import { initMixpanel, track, identify } from './src/services/mixpanel';
+
+await initMixpanel();
+await identify('user_123');
+await track('app_startup', { feature: 'mixpanel' });
+```
+
+Security note:
+- Do NOT embed the Mixpanel API secret in the mobile client. The API secret should only be used server-side for importing events or exporting data. Store the API secret securely (for example, via EAS secrets, your server environment, or a secure vault), and do not commit it into version control.
+
+Example (local dev, safe): add these to `.env` (this file is ignored by git):
+```
+EXPO_PUBLIC_MIXPANEL_TOKEN=a290441445a81fb8900cfaf9f1aa9f9a
+MIXPANEL_API_SECRET=16f99c2d8a7d759114b8dc8c4b7fee62  # server-only usage
+```
+
+
 ### Note Editor Tabs - Already Beautifully Designed ✨
 
 All tabs within the note editor already feature elegant, Steve Jobs-inspired glassmorphic design:

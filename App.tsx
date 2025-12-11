@@ -10,7 +10,8 @@ import { useEffect, useState, useRef } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { initDatabase } from "./src/services/database";
 import { initializeSupabase } from "./src/services/supabase/config";
-import { initFirebaseUser, setUserReferralProperties } from "./src/services/firebaseAnalytics";
+import { initSupabaseUser, setUserReferralProperties } from "./src/services/firebaseAnalytics";
+import { initMixpanel, identify as mixpanelIdentify, track as mixpanelTrack } from "./src/services/mixpanel";
 import { createOrGetUser, getReferralStats } from "./src/services/referralService";
 import { initializeOptimizedSync } from "./src/services/optimizedSync";
 import { initializeAnalytics, logScreenView, type ScreenName } from "./src/services/localAnalytics";
@@ -102,7 +103,7 @@ export default function App() {
           console.log('[App] Supabase initialized');
 
           // Initialize Supabase user with anonymous auth
-          await initFirebaseUser();
+          await initSupabaseUser();
           console.log('[App] Supabase user authenticated');
 
           // Set user referral properties for analytics
@@ -133,6 +134,16 @@ export default function App() {
               return userData?.used_referral_code;
             })()) : undefined
           );
+
+          // Initialize Mixpanel and identify user
+          try {
+            await initMixpanel();
+            await mixpanelIdentify(user.id);
+            await mixpanelTrack('app_startup', { user_id: user.id });
+            console.log('[Mixpanel] Initialized and user identified');
+          } catch (mpError) {
+            console.warn('[Mixpanel] Initialization or identify failed:', mpError);
+          }
 
           console.log('[App] User properties set');
         } catch (supabaseError) {
@@ -221,14 +232,15 @@ export default function App() {
         checkForUpdates();
 
         // Skip paywall check in dev mode
-        if (__DEV__) {
-          console.log('[App] DEV MODE: Skipping paywall check');
-          appState.current = nextAppState;
-          return;
-        }
+        // if (__DEV__) {
+        //   console.log('[App] DEV MODE: Skipping paywall check');
+        //   appState.current = nextAppState;
+        //   return;
+        // }
 
         // Check if user has active subscription
         const isSubscribed = await revenueCatService.isUserSubscribed();
+        console.log("🚀 ~ App ~ isSubscribed:", isSubscribed)
 
         if (!isSubscribed && navigationRef.current) {
           console.log('[App] User not subscribed, showing paywall');

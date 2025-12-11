@@ -50,8 +50,6 @@ export const initializeAnonymousAuth = async (): Promise<User> => {
  */
 export const getCurrentUserId = (): string => {
   try {
-    const supabase = getSupabaseClient();
-    const session = supabase.auth.getSession();
     
     // Get from cached session (synchronous)
     const cachedUserId = SecureStore.getItem(USER_ID_KEY);

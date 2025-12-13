@@ -7,30 +7,21 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.noteboost.app",
       "buildNumber": "1.0.0",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "audio"
-        ],
+        "UIBackgroundModes": ["audio", "audio"],
         "NSMicrophoneUsageDescription": "This app needs access to the microphone to record audio notes.",
         "NSCameraUsageDescription": "This app needs access to the camera to capture images for notes.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save and upload images.",
         "NSPhotoLibraryAddUsageDescription": "This app needs permission to save images to your photo library.",
         "NSAppleMusicUsageDescription": "This app needs access to your media library to import voice memos and audio files for note generation.",
-        "UISupportsDocumentBrowser": true
+        "UISupportsDocumentBrowser": true,
+        "ITSAppUsesNonExemptEncryption": false
       },
       "requireFullScreen": false,
       "googleServicesFile": "./GoogleService-Info.plist"
@@ -40,22 +31,23 @@
       "package": "com.noteboost.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/foreground.png",
-        "backgroundColor":"#242424"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#242424"
       },
-      "permissions": [
-        "RECORD_AUDIO",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "VIBRATE"
-      ],
+      "permissions": ["RECORD_AUDIO", "CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE", "VIBRATE"],
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "@react-native-firebase/app",
       "@react-native-firebase/crashlytics",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/splash.png",
+          "resizeMode": "cover"
+        }
+      ],
       [
         "expo-build-properties",
         {
@@ -65,8 +57,13 @@
         }
       ],
       "expo-asset",
-      "expo-video",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b0032afc-2813-4211-b7bb-e39afdd15461"
+      }
+    },
+    "owner": "apptimize-llc"
   }
 }

@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { RootStackParamList } from "./src/navigation/types";
 import { useOnboardingStore } from "./src/state/onboardingStore";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { initDatabase } from "./src/services/database";
 import { initializeSupabase } from "./src/services/supabase/config";
@@ -48,7 +48,6 @@ import FeedbackScreen from "./src/screens/FeedbackScreen";
 import CommitmentScreen from "./src/screens/CommitmentScreen";
 import InviteReferralScreen from "./src/screens/InviteReferralScreen";
 import PaywallScreen from "./src/screens/PaywallScreen";
-import SplashScreen from "./src/screens/SplashScreen";
 import BackendTestScreen from "./src/screens/BackendTestScreen";
 import OfflineIndicator from "./src/components/OfflineIndicator";
 import { XPNotification } from "./src/components/XPNotification";
@@ -89,8 +88,28 @@ export default function App() {
   const navigationRef = useRef<any>(null);
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const autoSyncCleanup = useRef<(() => void) | null>(null);
+  const splashStartTime = useRef<number>(Date.now());
+  const minSplashDuration = 1500; // 2.5 seconds minimum - ensures splash screen shows long enough for branding
+
+  // Function to hide splash screen with minimum duration guarantee
+  const hideSplashScreen = useCallback(() => {
+    const elapsedTime = Date.now() - splashStartTime.current;
+    const remainingTime = Math.max(0, minSplashDuration - elapsedTime);
+
+    setTimeout(() => {
+      ExpoSplashScreen.hideAsync().catch((e) => {
+        console.warn('[App] Error hiding splash screen:', e);
+      });
+    }, remainingTime);
+  }, [minSplashDuration]);
 
   useEffect(() => {
+    // Prevent native splash screen from auto-hiding
+    // Prevent native splash screen from auto-hiding
+    ExpoSplashScreen.preventAutoHideAsync().catch((e) => {
+      console.warn('[App] Error preventing splash screen auto-hide:', e);
+    });
+
     // Initialize database and wait for store hydration
     const initialize = async () => {
       try {
@@ -194,10 +213,8 @@ export default function App() {
         setIsReady(true);
         console.log('[App] App is ready');
 
-        // Hide splash screen when app is ready
-        ExpoSplashScreen.hideAsync().catch((e) => {
-          console.warn('[App] Error hiding splash screen:', e);
-        });
+        // Hide splash screen with minimum duration guarantee
+        hideSplashScreen();
 
         // Check for app updates after initialization
         checkForUpdates();
@@ -260,7 +277,8 @@ export default function App() {
   }, [hasCompletedOnboarding]);
 
   if (!isReady) {
-    return <SplashScreen />;
+    // Don't render anything while native splash screen is visible
+    return null;
   }
 
   return (

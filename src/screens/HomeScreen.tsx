@@ -817,7 +817,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View className="flex-row items-center flex-1">
             {/* Mascot Icon */}
             <Image
-              source={require('../assets/images/mascot-new.png')}
+              source={require('../assets/images/logo.png')}
               style={{ width: 44, height: 44, marginRight: 8 }}
               resizeMode="contain"
             />

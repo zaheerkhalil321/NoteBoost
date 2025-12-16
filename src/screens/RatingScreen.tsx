@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressBar } from "../components/ProgressBar";
+import * as StoreReview from 'expo-store-review';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = 340;
@@ -95,8 +96,23 @@ export default function RatingScreen() {
     navigation.goBack();
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Show native system rating popup
+    try {
+      const isAvailable = await StoreReview.hasAction();
+      if (isAvailable) {
+        await StoreReview.requestReview();
+        console.log('[Rating] Native rating popup shown');
+      } else {
+        console.log('[Rating] Native rating popup not available');
+      }
+    } catch (error) {
+      console.warn('[Rating] Error showing native rating popup:', error);
+    }
+
+    // Navigate to feedback screen after showing rating popup
     navigation.navigate('Feedback');
   };
 

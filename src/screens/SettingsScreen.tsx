@@ -189,7 +189,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
           text: "Open",
           onPress: async () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            const url = "https://vibecode.com/privacy";
+            const url = "https://apptimize.app/privacy-policy";
             const supported = await Linking.canOpenURL(url);
             if (supported) {
               await Linking.openURL(url);
@@ -808,7 +808,7 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
               marginRight: 6,
             }}>
               <Image
-                source={require("../assets/images/mascot-new.png")}
+                source={require("../assets/images/logo.png")}
                 style={{
                   width: 32,
                   height: 32,

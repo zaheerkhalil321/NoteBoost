@@ -641,46 +641,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const renderListHeader = useCallback(() => (
     <View className="px-5">
-      {/* Search Bar */}
-      <View className="mb-4">
-        <View
-          className="rounded-2xl overflow-hidden"
-          style={{
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.8)',
-            shadowColor: "#7DD3FC",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2,
-          }}
-        >
-          <View className="flex-row items-center px-4 py-3">
-            <Ionicons name="search" size={20} color="#7DD3FC" />
-            <TextInput
-              className="flex-1 ml-3 text-base text-[#1e293b]"
-              placeholder="Search notes..."
-              placeholderTextColor="#94A3B8"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              returnKeyType="search"
-            />
-            {searchQuery.length > 0 && (
-              <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSearchQuery("");
-                }}
-                className="ml-2 active:opacity-60"
-              >
-                <Ionicons name="close-circle" size={20} color="#94A3B8" />
-              </Pressable>
-            )}
-          </View>
-        </View>
-      </View>
-
       {/* Folder Chips - Horizontal Scrollable */}
       {folders.length > 0 && (
         <View className="mb-4">
@@ -796,7 +756,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
       )}
     </View>
-  ), [searchQuery, folders, selectedFilter, selectedFolderId]);
+  ), [folders, selectedFilter, selectedFolderId]);
 
   return (
     <>
@@ -889,7 +849,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       </View>
 
       {/* Notes List */}
-      {notes.length === 0 ? (
+      {allNotes.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8 pb-32">
           <View className="items-center">
             {/* Beautiful icon container with glassmorphic design */}
@@ -940,7 +900,48 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </View>
       ) : (
-        <FlatList
+        <View className="flex-1">
+          {/* Search Bar */}
+          <View className="px-5 mb-4">
+            <View
+              className="rounded-2xl overflow-hidden"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.8)',
+                shadowColor: "#7DD3FC",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }}
+            >
+              <View className="flex-row items-center px-4 py-3">
+                <Ionicons name="search" size={20} color="#7DD3FC" />
+                <TextInput
+                  className="flex-1 ml-3 text-base text-[#1e293b]"
+                  placeholder="Search notes..."
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  returnKeyType="search"
+                />
+                {searchQuery.length > 0 && (
+                  <Pressable
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSearchQuery("");
+                    }}
+                    className="ml-2 active:opacity-60"
+                  >
+                    <Ionicons name="close-circle" size={20} color="#94A3B8" />
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <FlatList
           data={notes}
           renderItem={renderNote}
           keyExtractor={(item) => item.id}
@@ -961,6 +962,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             />
           }
         />
+        </View>
       )}
 
       {/* Create New Button - Gradient FAB matching modal design */}

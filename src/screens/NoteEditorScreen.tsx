@@ -2859,6 +2859,7 @@ Remember: Be savage but safe for App Store. Roast their study habits, not their 
         </View>
 
         {displayMessages.length === 0 ? (
+          <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
           <View className="flex-1 items-center justify-center px-8 pb-20">
             <AnimatedMascot size={100} />
             <Text className="text-gray-900 text-2xl font-black mb-3 mt-6 text-center">
@@ -2989,6 +2990,7 @@ Remember: Be savage but safe for App Store. Roast their study habits, not their 
               )}
             </View>
           </View>
+          </ScrollView>
         ) : (
           <ScrollView
             ref={scrollViewRef}

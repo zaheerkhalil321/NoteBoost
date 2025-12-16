@@ -91,10 +91,7 @@ export default function FeynmanScreen({ navigation, route }: FeynmanScreenProps)
       className="flex-1"
       style={{ paddingTop: insets.top }}
     >
-      <LinearGradient
-        colors={["#E0F2FE", "#FEFCE8", "#FFFFFF"]}
-        className="flex-1"
-      >
+   
         {/* Header */}
         <View className="px-5 py-4 border-b border-gray-200 bg-white/80">
           <View className="flex-row items-center justify-between">
@@ -132,7 +129,7 @@ export default function FeynmanScreen({ navigation, route }: FeynmanScreenProps)
           </View>
         </View>
 
-        <ScrollView className="flex-1">
+        <ScrollView className="flex-1 grow" contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
           <View className="p-5">
             {/* Instructions Card */}
             <View className="bg-white/90 rounded-2xl p-5 mb-5 border border-sky-200">
@@ -253,7 +250,6 @@ export default function FeynmanScreen({ navigation, route }: FeynmanScreenProps)
             </View>
           </View>
         </ScrollView>
-      </LinearGradient>
     </KeyboardAvoidingView>
   );
 }

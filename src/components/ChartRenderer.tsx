@@ -308,7 +308,7 @@ export const ChartRenderer: React.FC<ChartRendererProps> = ({ chart }) => {
       </View>
 
       {/* Chart */}
-      <View style={{ width: chartWidth, height: chartHeight }}>
+      <View style={{flex:1, height: chartHeight}}>
         {renderChart()}
       </View>
 

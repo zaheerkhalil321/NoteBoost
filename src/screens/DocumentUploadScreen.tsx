@@ -99,27 +99,30 @@ export default function DocumentUploadScreen({ navigation }: DocumentUploadScree
 
   const processDocument = async (uri: string, mimeType: string) => {
     const accessStatus = await checkNoteAccess();
-    // if (!accessStatus.canCreate) {
-    //   // ... show alert
-    //   return;
-    // }
-
-    let progressInterval: NodeJS.Timeout | null = null;
+     if (!accessStatus.canCreate) {
+      Alert.alert(
+        "No Access",
+        "You need an active subscription or at least 1 credit to create a note. Get credits by inviting friends or subscribe for unlimited notes!",
+        [
+          { text: "Get Credits", onPress: () => navigation.navigate("Referral") },
+          { text: "Subscribe", onPress: () => navigation.navigate("Paywall") },
+          { text: "Cancel", style: "cancel" }
+        ]
+      );
+      return;
+    }
 
     try {
       setIsProcessing(true);
-      setProgressPercentage(0);
+      setProgressPercentage(10);
       setProcessingMessage("Reading document...");
-
-      progressInterval = setInterval(() => {
-        setProgressPercentage((prev) => (prev < 90 ? prev + 1 : prev));
-      }, 200);
 
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      setProcessingMessage("Generating AI notes...");
+      setProgressPercentage(25);
+      setProcessingMessage("Extracting content...");
 
       let aiContent;
 
@@ -129,9 +132,16 @@ export default function DocumentUploadScreen({ navigation }: DocumentUploadScree
         if (!text || text.trim().length === 0) {
           throw new Error("Document is empty");
         }
+        
+        setProgressPercentage(40);
+        setProcessingMessage("Generating AI notes...");
+        
         aiContent = await generateNoteContent(text, "document");
       } else {
         // For PDF/DOCX - first extract text, then use generateNoteContent
+        setProgressPercentage(40);
+        setProcessingMessage("Extracting text from document...");
+        
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -179,17 +189,18 @@ export default function DocumentUploadScreen({ navigation }: DocumentUploadScree
           throw new Error("Could not extract text from document");
         }
 
+        setProgressPercentage(65);
+        setProcessingMessage("Generating AI notes...");
+        
         // Now use the same generateNoteContent function as text files
         aiContent = await generateNoteContent(extractedText, "document");
       }
 
-      if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-      }
-
-      setProgressPercentage(100);
+      setProgressPercentage(90);
       setProcessingMessage("Creating your note...");
+      
+      // Small delay to show the 90% progress
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       addNote({
         title: aiContent.title,
@@ -208,11 +219,16 @@ export default function DocumentUploadScreen({ navigation }: DocumentUploadScree
       await consumeNoteAccess();
       addXP(20);
 
+      setProgressPercentage(100);
+      setProcessingMessage("Complete!");
+      
+      // Show 100% briefly before navigating
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       setIsProcessing(false);
       navigation.navigate("Home");
       Alert.alert("Success", "Note created! +20 XP earned!");
     } catch (error) {
-      if (progressInterval) clearInterval(progressInterval);
       console.error("Document processing error:", error);
       setIsProcessing(false);
       Alert.alert("Error", error instanceof Error ? error.message : "Failed to process document");

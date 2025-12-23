@@ -29,7 +29,7 @@
     "android": {
       "edgeToEdgeEnabled": true,
       "package": "com.noteboost.app",
-      "versionCode": 1,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#242424"

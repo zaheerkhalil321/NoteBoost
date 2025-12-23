@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as ExpoSplashScreen from "expo-splash-screen";
 import { RootStackParamList } from "./src/navigation/types";
 import { useOnboardingStore } from "./src/state/onboardingStore";
+import { useSubscriptionStore } from "./src/state/subscriptionStore";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import { initDatabase } from "./src/services/database";
@@ -48,6 +49,7 @@ import FeedbackScreen from "./src/screens/FeedbackScreen";
 import CommitmentScreen from "./src/screens/CommitmentScreen";
 import InviteReferralScreen from "./src/screens/InviteReferralScreen";
 import PaywallScreen from "./src/screens/PaywallScreen";
+import SubscriptionDetailsScreen from "./src/screens/SubscriptionDetailsScreen";
 import BackendTestScreen from "./src/screens/BackendTestScreen";
 import OfflineIndicator from "./src/components/OfflineIndicator";
 import { XPNotification } from "./src/components/XPNotification";
@@ -209,9 +211,18 @@ export default function App() {
       await Promise.race([revenueCatPromise, timeoutPromise]);
 
       // Small delay to ensure store is hydrated
-      setTimeout(() => {
+      setTimeout(async () => {
         setIsReady(true);
         console.log('[App] App is ready');
+
+        // Check subscription status and update store
+        try {
+          const checkSubscriptionStatus = useSubscriptionStore.getState().checkSubscriptionStatus;
+          await checkSubscriptionStatus();
+          console.log('[App] Subscription status checked and store updated');
+        } catch (error) {
+          console.error('[App] Failed to check subscription status:', error);
+        }
 
         // Hide splash screen with minimum duration guarantee
         hideSplashScreen();
@@ -248,6 +259,15 @@ export default function App() {
         // Check for app updates when returning to foreground
         checkForUpdates();
 
+        // Check subscription status and update store
+        try {
+          const checkSubscriptionStatus = useSubscriptionStore.getState().checkSubscriptionStatus;
+          await checkSubscriptionStatus();
+          console.log('[App] Subscription status updated on foreground');
+        } catch (error) {
+          console.error('[App] Failed to check subscription status on foreground:', error);
+        }
+
         // Skip paywall check in dev mode
         // if (__DEV__) {
         //   console.log('[App] DEV MODE: Skipping paywall check');
@@ -255,9 +275,10 @@ export default function App() {
         //   return;
         // }
 
-        // Check if user has active subscription
-        const isSubscribed = await revenueCatService.isUserSubscribed();
-        console.log("🚀 ~ App ~ isSubscribed:", isSubscribed)
+        // Check if user has active subscription from store
+        const subscriptionState = useSubscriptionStore.getState();
+        const isSubscribed = subscriptionState.isSubscribed;
+        console.log("🚀 ~ App ~ isSubscribed from store:", isSubscribed)
 
         if (!isSubscribed && navigationRef.current) {
           console.log('[App] User not subscribed, showing paywall');
@@ -431,6 +452,10 @@ export default function App() {
                 animation: "slide_from_bottom",
                 presentation: "fullScreenModal",
               }}
+            />
+            <Stack.Screen
+              name="SubscriptionDetails"
+              component={SubscriptionDetailsScreen}
             />
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen

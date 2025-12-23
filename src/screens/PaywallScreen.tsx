@@ -7,6 +7,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Image,
+  Alert,
   Animated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -80,7 +81,7 @@ const testimonials: Testimonial[] = [
 
 export default function PaywallScreen({ navigation }: PaywallScreenProps) {
   const insets = useSafeAreaInsets();
-  const setSubscription = useSubscriptionStore((s) => s.setSubscription);
+  const { isSubscribed, activePlan, checkSubscriptionStatus } = useSubscriptionStore();
   const [selectedPlan, setSelectedPlan] = useState<"yearly" | "monthly" | "weekly" | "lifetime">("weekly");
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
@@ -90,6 +91,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
   const [weeklyPackage, setWeeklyPackage] = useState<PurchasesPackage | null>(null);
   const [lifetimePackage, setLifetimePackage] = useState<PurchasesPackage | null>(null);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [currentSubscriptionDetails, setCurrentSubscriptionDetails] = useState<any>(null);
 
   // Scroll hint animation
   const scrollHintOpacity = useRef(new Animated.Value(0)).current;
@@ -169,6 +171,13 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
 
       // Initialize RevenueCat if not already done
       await revenueCatService.initialize();
+
+      // Check if user is already subscribed before showing paywall
+      if (isSubscribed) {
+        console.log('[Paywall] User is already subscribed, showing plan switch option');
+        // Don't block - allow switching plans
+        setCurrentSubscriptionDetails(await revenueCatService.getSubscriptionDetails());
+      }
 
       // Load subscription offerings
       console.log('[Paywall] Loading RevenueCat subscription offerings');
@@ -268,9 +277,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
     try {
       let selectedPackage;
       if (selectedPlan === "yearly") selectedPackage = yearlyPackage;
-      else if (selectedPlan === "monthly") selectedPackage = monthlyPackage;
       else if (selectedPlan === "weekly") selectedPackage = weeklyPackage;
-      else if (selectedPlan === "lifetime") selectedPackage = lifetimePackage;
 
       if (!selectedPackage) {
         console.error('[Paywall] No package selected');
@@ -285,8 +292,11 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
       const customerInfo = await revenueCatService.purchasePackage(selectedPackage);
 
       if (customerInfo) {
-        // Save subscription to store
-        setSubscription(selectedPlan);
+        // Save subscription to store - removed setSubscription to rely only on RevenueCat data
+        // setSubscription(selectedPlan);
+
+        // Sync subscription status with RevenueCat
+        await checkSubscriptionStatus();
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         console.log('[Paywall] Purchase successful');
@@ -318,6 +328,9 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
       const customerInfo = await revenueCatService.restorePurchases();
 
       if (customerInfo && Object.keys(customerInfo.activeSubscriptions).length > 0) {
+        // Sync subscription status with RevenueCat
+        await checkSubscriptionStatus();
+        
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         alert('Purchases restored successfully!');
         navigation.reset({
@@ -858,6 +871,46 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                 borderTopColor: "rgba(255, 255, 255, 0.5)",
               }}
             >
+            {/* Header for Subscribed Users */}
+            {isSubscribed && (
+              <View style={{
+                backgroundColor: "rgba(16, 185, 129, 0.1)",
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: "rgba(16, 185, 129, 0.3)",
+              }}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10B981" style={{ marginRight: 8 }} />
+                  <Text style={{
+                    color: "#1e293b",
+                    fontSize: 18,
+                    fontWeight: "700",
+                  }}>
+                    You're Already Premium!
+                  </Text>
+                </View>
+                <Text style={{
+                  color: "#64748b",
+                  fontSize: 14,
+                  lineHeight: 20,
+                  marginBottom: 8,
+                }}>
+                  Switch to a different plan or manage your subscription below.
+                </Text>
+                {currentSubscriptionDetails?.expirationDate && (
+                  <Text style={{
+                    color: "#10B981",
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}>
+                    Current plan expires: {new Date(currentSubscriptionDetails.expirationDate).toLocaleDateString()}
+                  </Text>
+                )}
+              </View>
+            )}
+
             {/* Pricing Plans - Glassmorphic Design */}
             <View>
               {/* Yearly Plan */}
@@ -919,7 +972,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                             fontWeight: "700",
                             color: "#64748b",
                           }}>
-                            {yearlyPackage.product.price ? `$${(yearlyPackage.product.price / 365).toFixed(2)}/day` : "Best savings"}
+                            {yearlyPackage.product.price ? `${yearlyPackage.product.currencyCode} ${(yearlyPackage.product.price / 365.25).toFixed(2)}/day` : "Best savings"}
                           </Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
@@ -983,7 +1036,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                             fontWeight: "700",
                             color: "#64748b",
                           }}>
-                            {monthlyPackage.product.price ? `$${(monthlyPackage.product.price / 30).toFixed(2)}/day` : "Great value"}
+                            {monthlyPackage.product.price ? `${monthlyPackage.product.currencyCode} ${(monthlyPackage.product.price / 30.44).toFixed(2)}/day` : "Great value"}
                           </Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
@@ -1153,7 +1206,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                             fontWeight: "700",
                             color: "#64748b",
                           }}>
-                            {weeklyPackage.product.price ? `$${(weeklyPackage.product.price / 7).toFixed(2)}/day` : "Best for trying out"}
+                            {weeklyPackage.product.price ? `${weeklyPackage.product.currencyCode} ${(weeklyPackage.product.price / 7).toFixed(2)}/day` : "Best for trying out"}
                           </Text>
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
@@ -1225,7 +1278,7 @@ export default function PaywallScreen({ navigation }: PaywallScreenProps) {
                       fontWeight: "700",
                       letterSpacing: -0.3,
                     }}>
-                      Unlock My Plan
+                      {isSubscribed ? "Switch Plan" : "Unlock My Plan"}
                     </Text>
                   )}
                 </LinearGradient>

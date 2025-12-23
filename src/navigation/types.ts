@@ -17,6 +17,7 @@ export type RootStackParamList = {
   FinalCommit: undefined;
   InviteReferral: undefined;
   Paywall: undefined;
+  SubscriptionDetails: undefined;
   Home: undefined;
   NoteEditor: { noteId?: string };
   Feynman: { noteId: string };

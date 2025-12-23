@@ -2,6 +2,7 @@ import revenueCatService from './revenueCat';
 import { getUserCredits, useCredits as spendCredits, createOrGetUser } from './referralService';
 import * as SecureStore from 'expo-secure-store';
 import { getCurrentUserId, initializeAnonymousAuth } from './supabase/auth';
+import { useSubscriptionStore } from '../state/subscriptionStore';
 
 const USER_ID_KEY = 'user_id';
 
@@ -53,8 +54,9 @@ const getUserId = async (): Promise<string | null> => {
  */
 export const checkNoteAccess = async (): Promise<NoteAccessStatus> => {
   try {
-    // First check if user has active subscription
-    const hasSubscription = await revenueCatService.isUserSubscribed();
+    // First check if user has active subscription from store
+    const subscriptionState = useSubscriptionStore.getState();
+    const hasSubscription = subscriptionState.isSubscribed;
 
     if (hasSubscription) {
       return {
@@ -113,8 +115,9 @@ export const consumeNoteAccess = async (): Promise<{
   remainingCredits?: number;
 }> => {
   try {
-    // Check if user has subscription
-    const hasSubscription = await revenueCatService.isUserSubscribed();
+    // Check if user has subscription from store
+    const subscriptionState = useSubscriptionStore.getState();
+    const hasSubscription = subscriptionState.isSubscribed;
 
     if (hasSubscription) {
       // Subscription users don't use credits

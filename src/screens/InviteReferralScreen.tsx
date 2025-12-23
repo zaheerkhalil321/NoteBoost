@@ -11,6 +11,7 @@ import { ProgressBar } from "../components/ProgressBar";
 import { Gift, UserPlus, Users, Sparkles } from 'lucide-react-native';
 import InviteBottomSheet from '../components/InviteBottomSheet';
 import { BlurView } from 'expo-blur';
+import { checkNoteAccess } from '../services/noteAccessService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'InviteReferral'>;
 
@@ -114,8 +115,14 @@ export default function InviteReferralScreen() {
     navigation.goBack();
   };
 
-  const handleGetStarted = () => {
+  const handleGetStarted = async() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    // check if user has subscription or credits
+    const noteAccess = await checkNoteAccess();
+    if (noteAccess.canCreate) {
+      navigation.navigate('Home');
+      return;
+    }
     navigation.navigate('Paywall');
   };
 

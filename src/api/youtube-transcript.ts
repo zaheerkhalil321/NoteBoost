@@ -81,45 +81,85 @@ export const getYouTubeTranscript = async (
   onProgress?: (message: string) => void
 ): Promise<string> => {
   try {
-    // First, try to get captions if available
-    console.log("Attempting to fetch captions for video:", videoId);
-    onProgress?.("Checking for captions...");
+    const rapidApiKey = process.env.EXPO_PUBLIC_RAPIDAPI_KEY;
+    const rapidApiHost = "youtube-transcripts-transcribe-youtube-video-to-text.p.rapidapi.com";
 
-    try {
-      const apiUrl = `https://youtube-transcript-api.fly.dev/transcript?videoId=${videoId}`;
+    // Helper to extract transcript text from various possible response shapes
+    const extractTranscriptFromJson = (json: any): string | null => {
+      if (!json) return null;
+      if (typeof json === "string" && json.trim()) return json.trim();
 
-      const { controller, timeout } = createTimeoutController(15000); // Increased to 15s
+      // Common top-level fields
+      const candidates = [
+        json.transcription,
+        json.transcribe,
+        json.transcript,
+        json.text,
+        json.result,
+        json.output?.text,
+        json.data?.transcription,
+        json.data?.transcript,
+        json.data?.text,
+      ];
 
-      const response = await fetch(apiUrl, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data && Array.isArray(data) && data.length > 0) {
-          const transcriptText = data
-            .map((segment: { text: string }) => segment.text)
-            .filter((text: string) => text && text.trim())
-            .join(" ")
-            .trim();
-
-          if (transcriptText) {
-            console.log("Captions found and extracted successfully");
-            onProgress?.("Captions found!");
-            return transcriptText;
-          }
-        }
+      for (const candidate of candidates) {
+        if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
       }
-    } catch (captionError) {
-      console.log("Captions not available, will try audio extraction:", captionError);
-    }
+
+      // Arrays of segments or strings
+      if (Array.isArray(json)) {
+        if (json.every((item) => typeof item === "string")) {
+          return json.filter(Boolean).join(" ").trim();
+        }
+
+        // Array of objects with text fields
+        const texts = json
+          .map((item: any) => item?.text || item?.transcript || item?.transcribed_text || "")
+          .filter(Boolean);
+        if (texts.length) return texts.join(" ").trim();
+      }
+
+      if (Array.isArray(json.transcripts) && json.transcripts.length) {
+        const texts = json.transcripts.map((t: any) => t?.text || t?.transcript || t?.content || "").filter(Boolean);
+        if (texts.length) return texts.join(" ").trim();
+      }
+
+      return null;
+    };
+
+    // Try RapidAPI service first (if API key is available).
+      try {
+
+        const { controller, timeout } = createTimeoutController(120000);
+        const rapidUrl = `https://${rapidApiHost}/transcribe`;
+
+        const resp = await fetch(rapidUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // use header names recommended by RapidAPI
+            "x-rapidapi-key": rapidApiKey,
+            "x-rapidapi-host": rapidApiHost,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${videoId}` }),
+        });
+
+        clearTimeout(timeout);
+
+const json = await resp.json();
+        console.log("🚀 ~ getYouTubeTranscript ~ json:", json)
+        const transcript = extractTranscriptFromJson(json);
+        
+        if (transcript && transcript.trim()) {
+          console.log("Transcript obtained from RapidAPI service");
+          return transcript;
+        }
+      } catch (err) {
+        console.warn("RapidAPI transcript attempt failed:", err);
+        // Continue to fallback methods
+      }
+
 
     // If captions are not available, try audio transcription
     console.log("No captions found, attempting audio transcription...");

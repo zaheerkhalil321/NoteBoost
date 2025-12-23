@@ -20,6 +20,16 @@ import NetInfo from '@react-native-community/netinfo';
  *   - user_id: uuid (foreign key to users)
  *   - created_at: timestamptz
  * 
+ * subscriptions
+ *   - id: uuid (primary key)
+ *   - user_id: uuid (foreign key to auth.users)
+ *   - plan_type: text (weekly, monthly, yearly, lifetime)
+ *   - subscription_date: timestamptz
+ *   - is_active: boolean
+ *   - revenuecat_id: text (nullable)
+ *   - created_at: timestamptz
+ *   - updated_at: timestamptz
+ * 
  * notes
  *   - id: uuid (primary key)
  *   - user_id: uuid (foreign key to users)

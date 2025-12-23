@@ -457,6 +457,49 @@ export default function SettingsScreen({ navigation }: SettingsScreenProps) {
             </View>
           </Pressable>
 
+          {/* Subscription Details */}
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.navigate("SubscriptionDetails");
+            }}
+            style={({ pressed }) => getPremiumPressableStyle(pressed, {
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              borderRadius: 18,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: "rgba(226, 232, 240, 0.5)",
+              shadowColor: "#7DD3FC",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 12,
+              elevation: 2,
+            })}
+          >
+            <View style={{ padding: 18 }}>
+              <View className="flex-row items-center">
+                <View style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 16,
+                  backgroundColor: "rgba(252, 92, 101, 0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 16,
+                }}>
+                  <Ionicons name="star" size={26} color="#FC5C65" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-bold text-[#1e293b]">Subscription</Text>
+                  <Text className="text-sm text-[#64748b] mt-1 font-medium">
+                    View your premium status and benefits
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color="#94A3B8" />
+              </View>
+            </View>
+          </Pressable>
+
           {/* Language */}
           <Pressable
             onPress={() => {
